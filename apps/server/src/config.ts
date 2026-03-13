@@ -6,7 +6,7 @@
  *
  * @module ServerConfig
  */
-import { Effect, FileSystem, Layer, Path, ServiceMap } from "effect";
+import { Effect, FileSystem, Layer, LogLevel, Path, ServiceMap } from "effect";
 
 export const DEFAULT_PORT = 3773;
 
@@ -33,6 +33,7 @@ export interface ServerDerivedPaths {
  * ServerConfigShape - Process/runtime configuration required by the server.
  */
 export interface ServerConfigShape extends ServerDerivedPaths {
+  readonly logLevel: LogLevel.LogLevel;
   readonly mode: RuntimeMode;
   readonly port: number;
   readonly host: string | undefined;
@@ -95,6 +96,7 @@ export class ServerConfig extends ServiceMap.Service<ServerConfig, ServerConfigS
         yield* fs.makeDirectory(derivedPaths.attachmentsDir, { recursive: true });
 
         return {
+          logLevel: "Error",
           cwd,
           baseDir,
           ...derivedPaths,
