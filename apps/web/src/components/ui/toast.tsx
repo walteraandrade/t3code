@@ -43,7 +43,7 @@ function CopyErrorButton({ text }: { text: string }) {
 
   return (
     <button
-      className="shrink-0 cursor-pointer rounded-md p-1 text-muted-foreground opacity-60 transition-opacity hover:opacity-100"
+      className="shrink-0 cursor-pointer rounded-none p-1 text-muted-foreground opacity-60 transition-opacity hover:opacity-100"
       onClick={() => copyToClipboard(text)}
       title="Copy error"
       type="button"
@@ -222,7 +222,7 @@ function Toasts({ position = "top-right" }: { position: ToastPosition }) {
           return (
             <Toast.Root
               className={cn(
-                "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) w-full select-none rounded-lg border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition:transform_.5s_cubic-bezier(.22,1,.36,1),opacity_.5s,height_.15s] before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-lg)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
+                "absolute z-[calc(9999-var(--toast-index))] h-(--toast-calc-height) w-full select-none rounded-none border bg-popover not-dark:bg-clip-padding text-popover-foreground shadow-lg/5 [transition:transform_.5s_cubic-bezier(.22,1,.36,1),opacity_.5s,height_.15s] before:pointer-events-none before:absolute before:inset-0 before:rounded-none before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
                 // Base positioning using data-position
                 "data-[position*=right]:right-0 data-[position*=right]:left-auto",
                 "data-[position*=left]:right-auto data-[position*=left]:left-0",
@@ -377,8 +377,8 @@ function AnchoredToasts() {
                   className={cn(
                     "relative text-balance border bg-popover not-dark:bg-clip-padding text-popover-foreground text-xs transition-[scale,opacity] before:pointer-events-none before:absolute before:inset-0 before:shadow-[0_1px_--theme(--color-black/4%)] data-ending-style:scale-98 data-starting-style:scale-98 data-ending-style:opacity-0 data-starting-style:opacity-0 dark:before:shadow-[0_-1px_--theme(--color-white/6%)]",
                     tooltipStyle
-                      ? "rounded-md shadow-md/5 before:rounded-[calc(var(--radius-md)-1px)]"
-                      : "rounded-lg shadow-lg/5 before:rounded-[calc(var(--radius-lg)-1px)]",
+                      ? "rounded-none shadow-md/5 before:rounded-none"
+                      : "rounded-none shadow-lg/5 before:rounded-none",
                   )}
                   data-slot="toast-popup"
                   toast={toast}

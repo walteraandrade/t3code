@@ -124,7 +124,7 @@ const PlanSidebar = memo(function PlanSidebar({
         <div className="flex items-center gap-2">
           <Badge
             variant="secondary"
-            className="rounded-md bg-info/10 px-1.5 py-0 text-[10px] font-semibold tracking-wide text-info-foreground uppercase"
+            className="rounded-none bg-info/10 px-1.5 py-0 text-[10px] font-semibold tracking-wide text-info-foreground uppercase"
           >
             Plan
           </Badge>
@@ -195,7 +195,7 @@ const PlanSidebar = memo(function PlanSidebar({
                 <div
                   key={`${step.status}:${step.step}`}
                   className={cn(
-                    "flex items-start gap-2.5 rounded-lg px-2.5 py-2 transition-colors duration-200",
+                    "flex items-start gap-2.5 rounded-none border border-transparent px-2.5 py-2 transition-colors duration-200",
                     step.status === "inProgress" && "bg-info/5",
                     step.status === "completed" && "bg-success/5",
                   )}
@@ -236,7 +236,7 @@ const PlanSidebar = memo(function PlanSidebar({
                 </span>
               </button>
               {proposedPlanExpanded ? (
-                <div className="rounded-lg border border-border/50 bg-background/50 p-3">
+                <div className="rounded-none border border-border/50 bg-background/50 p-3">
                   <ChatMarkdown
                     text={displayedPlanMarkdown ?? ""}
                     cwd={markdownCwd}

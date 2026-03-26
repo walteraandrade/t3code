@@ -3606,7 +3606,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
             >
               <div
                 className={cn(
-                  "group rounded-[22px] p-px transition-colors duration-200",
+                  "group rounded-none p-px transition-colors duration-200",
                   composerProviderState.composerFrameClassName,
                 )}
                 onDragEnter={onComposerDragEnter}
@@ -3616,20 +3616,20 @@ export default function ChatView({ threadId }: ChatViewProps) {
               >
                 <div
                   className={cn(
-                    "rounded-[20px] border bg-card transition-colors duration-200 has-focus-visible:border-ring/45",
+                    "rounded-none border bg-card transition-colors duration-200 has-focus-visible:border-ring/45",
                     isDragOverComposer ? "border-primary/70 bg-accent/30" : "border-border",
                     composerProviderState.composerSurfaceClassName,
                   )}
                 >
                   {activePendingApproval ? (
-                    <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                    <div className="rounded-none border-b border-border/65 bg-muted/20">
                       <ComposerPendingApprovalPanel
                         approval={activePendingApproval}
                         pendingCount={pendingApprovals.length}
                       />
                     </div>
                   ) : pendingUserInputs.length > 0 ? (
-                    <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                    <div className="rounded-none border-b border-border/65 bg-muted/20">
                       <ComposerPendingUserInputPanel
                         pendingUserInputs={pendingUserInputs}
                         respondingRequestIds={respondingRequestIds}
@@ -3640,7 +3640,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
                       />
                     </div>
                   ) : showPlanFollowUpPrompt && activeProposedPlan ? (
-                    <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                    <div className="rounded-none border-b border-border/65 bg-muted/20">
                       <ComposerPlanFollowUpBanner
                         key={activeProposedPlan.id}
                         planTitle={proposedPlanTitle(activeProposedPlan.planMarkdown) ?? null}
@@ -3674,7 +3674,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
                           {composerImages.map((image) => (
                             <div
                               key={image.id}
-                              className="relative h-16 w-16 overflow-hidden rounded-lg border border-border/80 bg-background"
+                              className="relative h-16 w-16 overflow-hidden rounded-none border border-border/80 bg-background"
                             >
                               {image.previewUrl ? (
                                 <button
@@ -3708,7 +3708,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
                                       <span
                                         role="img"
                                         aria-label="Draft attachment may not persist"
-                                        className="absolute left-1 top-1 inline-flex items-center justify-center rounded bg-background/85 p-0.5 text-amber-600"
+                                        className="absolute left-1 top-1 inline-flex items-center justify-center rounded-none bg-background/85 p-0.5 text-amber-600"
                                       >
                                         <CircleAlertIcon className="size-3" />
                                       </span>
@@ -4214,7 +4214,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
             <img
               src={expandedImageItem.src}
               alt={expandedImageItem.name}
-              className="max-h-[86vh] max-w-[92vw] select-none rounded-lg border border-border/70 bg-background object-contain shadow-2xl"
+              className="max-h-[86vh] max-w-[92vw] select-none rounded-none border border-border/70 bg-background object-contain shadow-2xl"
               draggable={false}
             />
             <p className="mt-2 max-w-[92vw] truncate text-center text-xs text-muted-foreground/80">

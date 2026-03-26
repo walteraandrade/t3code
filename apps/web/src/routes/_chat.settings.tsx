@@ -223,7 +223,7 @@ function SettingsSection({
         </h2>
         {headerAction}
       </div>
-      <div className="relative overflow-hidden rounded-2xl border bg-card not-dark:bg-clip-padding text-card-foreground shadow-xs/5 before:pointer-events-none before:absolute before:inset-0 before:rounded-[calc(var(--radius-2xl)-1px)] before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]">
+      <div className="relative overflow-hidden rounded-none border bg-card not-dark:bg-clip-padding text-card-foreground shadow-xs/5 before:pointer-events-none before:absolute before:inset-0 before:rounded-none before:shadow-[0_1px_--theme(--color-black/4%)] dark:before:shadow-[0_-1px_--theme(--color-white/6%)]">
         {children}
       </div>
     </section>
@@ -281,7 +281,7 @@ function SettingResetButton({ label, onClick }: { label: string; onClick: () => 
             size="icon-xs"
             variant="ghost"
             aria-label={`Reset ${label} to default`}
-            className="size-5 rounded-sm p-0 text-muted-foreground hover:text-foreground"
+            className="size-5 rounded-none p-0 text-muted-foreground hover:text-foreground"
             onClick={(event) => {
               event.stopPropagation();
               onClick();
@@ -1231,7 +1231,7 @@ function SettingsRouteView() {
                         <Button
                           size="icon-xs"
                           variant="ghost"
-                          className="size-5 rounded-sm p-0 text-muted-foreground hover:text-foreground"
+                          className="size-5 rounded-none p-0 text-muted-foreground hover:text-foreground"
                           disabled={isRefreshingProviders}
                           onClick={() => void refreshProviders()}
                           aria-label="Refresh provider status"
