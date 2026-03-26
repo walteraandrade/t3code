@@ -8,6 +8,7 @@ import {
 } from "../composerDraftStore";
 import { newThreadId } from "../lib/utils";
 import { useStore } from "../store";
+import { resolveNewThreadTarget } from "./useHandleNewThread.logic";
 
 export function useHandleNewThread() {
   const projects = useStore((store) => store.projects);
@@ -49,59 +50,53 @@ export function useHandleNewThread() {
       const latestActiveDraftThread: DraftThreadState | null = routeThreadId
         ? getDraftThread(routeThreadId)
         : null;
-      if (storedDraftThread) {
-        return (async () => {
-          if (hasBranchOption || hasWorktreePathOption || hasEnvModeOption) {
-            setDraftThreadContext(storedDraftThread.threadId, {
-              ...(hasBranchOption ? { branch: options?.branch ?? null } : {}),
-              ...(hasWorktreePathOption ? { worktreePath: options?.worktreePath ?? null } : {}),
-              ...(hasEnvModeOption ? { envMode: options?.envMode } : {}),
-            });
-          }
-          setProjectDraftThreadId(projectId, storedDraftThread.threadId);
-          if (routeThreadId === storedDraftThread.threadId) {
-            return;
-          }
-          await navigate({
-            to: "/$threadId",
-            params: { threadId: storedDraftThread.threadId },
-          });
-        })();
-      }
-
-      clearProjectDraftThreadId(projectId);
-
-      if (
-        latestActiveDraftThread &&
-        routeThreadId &&
-        latestActiveDraftThread.projectId === projectId
-      ) {
-        if (hasBranchOption || hasWorktreePathOption || hasEnvModeOption) {
-          setDraftThreadContext(routeThreadId, {
-            ...(hasBranchOption ? { branch: options?.branch ?? null } : {}),
-            ...(hasWorktreePathOption ? { worktreePath: options?.worktreePath ?? null } : {}),
-            ...(hasEnvModeOption ? { envMode: options?.envMode } : {}),
-          });
-        }
-        setProjectDraftThreadId(projectId, routeThreadId);
-        return Promise.resolve();
-      }
-
-      const threadId = newThreadId();
+      const resolvedDraftTarget = resolveNewThreadTarget({
+        projectId,
+        routeThreadId,
+        routeDraftThread: latestActiveDraftThread,
+        storedProjectDraftThread: storedDraftThread,
+        draftContextOverrides: options,
+        freshThreadId: newThreadId(),
+      });
       const createdAt = new Date().toISOString();
+
       return (async () => {
-        setProjectDraftThreadId(projectId, threadId, {
-          createdAt,
-          branch: options?.branch ?? null,
-          worktreePath: options?.worktreePath ?? null,
-          envMode: options?.envMode ?? "local",
-          runtimeMode: DEFAULT_RUNTIME_MODE,
-        });
-        applyStickyState(threadId);
+        if (
+          resolvedDraftTarget.action !== "create-new" &&
+          (hasBranchOption || hasWorktreePathOption || hasEnvModeOption)
+        ) {
+          setDraftThreadContext(resolvedDraftTarget.threadId, resolvedDraftTarget.draftContext);
+        }
+
+        if (resolvedDraftTarget.action === "create-new") {
+          clearProjectDraftThreadId(projectId);
+          setProjectDraftThreadId(projectId, resolvedDraftTarget.threadId, {
+            createdAt,
+            branch: resolvedDraftTarget.draftContext.branch,
+            worktreePath: resolvedDraftTarget.draftContext.worktreePath,
+            envMode: resolvedDraftTarget.draftContext.envMode,
+            runtimeMode: DEFAULT_RUNTIME_MODE,
+          });
+          applyStickyState(resolvedDraftTarget.threadId);
+
+          const createdDraftThread =
+            useComposerDraftStore.getState().draftThreadsByThreadId[resolvedDraftTarget.threadId];
+          if (!createdDraftThread) {
+            throw new Error(
+              `New-thread draft write did not persist for thread ${resolvedDraftTarget.threadId}.`,
+            );
+          }
+        } else {
+          setProjectDraftThreadId(projectId, resolvedDraftTarget.threadId);
+        }
+
+        if (routeThreadId === resolvedDraftTarget.threadId) {
+          return;
+        }
 
         await navigate({
           to: "/$threadId",
-          params: { threadId },
+          params: { threadId: resolvedDraftTarget.threadId },
         });
       })();
     },

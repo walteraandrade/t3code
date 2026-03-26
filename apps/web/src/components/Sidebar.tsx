@@ -244,12 +244,12 @@ function SidebarBrand() {
       <TooltipTrigger
         render={
           <div className="flex min-w-0 flex-1 items-center gap-2.5 cursor-pointer">
-            <div className="flex h-8 w-[9.5rem] min-w-0 items-center overflow-hidden border border-border/60 bg-background/50">
+            <div className="flex h-8 w-8 min-w-0 items-center overflow-hidden border border-border/60 bg-background/50">
               {brandState === "ready" ? (
                 <img
                   src={SIDEBAR_BRAND_IMAGE_PATH}
                   alt="Sidebar brand"
-                  className="h-8 w-[9.5rem] object-contain object-left"
+                  className="h-8 w-8 object-contain"
                   draggable={false}
                 />
               ) : (
