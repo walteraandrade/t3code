@@ -326,6 +326,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
   const [sendStartedAt, setSendStartedAt] = useState<string | null>(null);
   const [isConnecting, _setIsConnecting] = useState(false);
   const [isRevertingCheckpoint, setIsRevertingCheckpoint] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const [respondingRequestIds, setRespondingRequestIds] = useState<ApprovalRequestId[]>([]);
   const [respondingUserInputRequestIds, setRespondingUserInputRequestIds] = useState<
     ApprovalRequestId[]
@@ -653,6 +654,10 @@ export default function ChatView({ threadId }: ChatViewProps) {
   const isSendBusy = sendPhase !== "idle";
   const isPreparingWorktree = sendPhase === "preparing-worktree";
   const isWorking = phase === "running" || isSendBusy || isConnecting || isRevertingCheckpoint;
+
+  useEffect(() => {
+    if (phase !== "running") setIsStopping(false);
+  }, [phase]);
   const nowIso = new Date(nowTick).toISOString();
   const activeWorkStartedAt = deriveActiveWorkStartedAt(
     activeLatestTurn,
@@ -2669,13 +2674,18 @@ export default function ChatView({ threadId }: ChatViewProps) {
 
   const onInterrupt = async () => {
     const api = readNativeApi();
-    if (!api || !activeThread) return;
-    await api.orchestration.dispatchCommand({
-      type: "thread.turn.interrupt",
-      commandId: newCommandId(),
-      threadId: activeThread.id,
-      createdAt: new Date().toISOString(),
-    });
+    if (!api || !activeThread || isStopping) return;
+    setIsStopping(true);
+    try {
+      await api.orchestration.dispatchCommand({
+        type: "thread.turn.interrupt",
+        commandId: newCommandId(),
+        threadId: activeThread.id,
+        createdAt: new Date().toISOString(),
+      });
+    } catch {
+      setIsStopping(false);
+    }
   };
 
   const onRespondToApproval = useCallback(
@@ -3946,19 +3956,36 @@ export default function ChatView({ threadId }: ChatViewProps) {
                         ) : phase === "running" ? (
                           <button
                             type="button"
-                            className="flex size-8 cursor-pointer items-center justify-center rounded-full bg-rose-500/90 text-white transition-all duration-150 hover:bg-rose-500 hover:scale-105 sm:h-8 sm:w-8"
+                            disabled={isStopping}
+                            className="flex size-8 cursor-pointer items-center justify-center rounded-full bg-rose-500/90 text-white transition-all duration-150 hover:bg-rose-500 hover:scale-105 disabled:cursor-not-allowed disabled:opacity-60 sm:h-8 sm:w-8"
                             onClick={() => void onInterrupt()}
-                            aria-label="Stop generation"
+                            aria-label={isStopping ? "Stopping..." : "Stop generation"}
                           >
-                            <svg
-                              width="12"
-                              height="12"
-                              viewBox="0 0 12 12"
-                              fill="currentColor"
-                              aria-hidden="true"
-                            >
-                              <rect x="2" y="2" width="8" height="8" rx="1.5" />
-                            </svg>
+                            {isStopping ? (
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 12 12"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                aria-hidden="true"
+                                className="animate-spin"
+                              >
+                                <circle cx="6" cy="6" r="4" strokeOpacity="0.3" />
+                                <path d="M6 2a4 4 0 0 1 4 4" />
+                              </svg>
+                            ) : (
+                              <svg
+                                width="12"
+                                height="12"
+                                viewBox="0 0 12 12"
+                                fill="currentColor"
+                                aria-hidden="true"
+                              >
+                                <rect x="2" y="2" width="8" height="8" rx="1.5" />
+                              </svg>
+                            )}
                           </button>
                         ) : pendingUserInputs.length === 0 ? (
                           showPlanFollowUpPrompt ? (
