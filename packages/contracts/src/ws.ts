@@ -76,6 +76,9 @@ export const WS_METHODS = {
   // Server meta
   serverGetConfig: "server.getConfig",
   serverUpsertKeybinding: "server.upsertKeybinding",
+
+  // Theme methods
+  themeGetOmarchyColors: "theme.getOmarchyColors",
 } as const;
 
 // ── Push Event Channels ──────────────────────────────────────────────
@@ -141,6 +144,9 @@ const WebSocketRequestBody = Schema.Union([
   // Server meta
   tagRequestBody(WS_METHODS.serverGetConfig, Schema.Struct({})),
   tagRequestBody(WS_METHODS.serverUpsertKeybinding, KeybindingRule),
+
+  // Theme methods
+  tagRequestBody(WS_METHODS.themeGetOmarchyColors, Schema.Struct({})),
 ]);
 
 export const WebSocketRequest = Schema.Struct({

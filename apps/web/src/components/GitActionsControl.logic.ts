@@ -348,3 +348,31 @@ export function resolveDefaultBranchActionDialogCopy(input: {
 
 // Re-export from shared for backwards compatibility in this module's exports
 export { resolveAutoFeatureBranchName } from "@t3tools/shared/git";
+
+export interface AiGitAction {
+  id: string;
+  label: string;
+  prompt: string;
+  editBeforeSend?: boolean;
+}
+
+export const AI_GIT_ACTIONS: AiGitAction[] = [
+  {
+    id: "ai_commit",
+    label: "AI: Commit",
+    prompt: "Review my current changes and create a git commit with a meaningful, concise message.",
+  },
+  {
+    id: "ai_commit_push",
+    label: "AI: Commit & push",
+    prompt:
+      "Review my current changes, create a git commit with a meaningful message, then push to the remote.",
+  },
+  {
+    id: "ai_open_pr",
+    label: "AI: Open PR",
+    prompt:
+      "Push my unpushed commits and open a pull request with a descriptive title and body summarizing the changes.",
+    editBeforeSend: true,
+  },
+];

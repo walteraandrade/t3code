@@ -1,13 +1,24 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
-import { ChevronDownIcon, PlusIcon, RotateCcwIcon, Undo2Icon, XIcon } from "lucide-react";
+import {
+  ChevronDownIcon,
+  PencilIcon,
+  PlusIcon,
+  RotateCcwIcon,
+  Undo2Icon,
+  XIcon,
+} from "lucide-react";
 import { type ReactNode, useCallback, useState } from "react";
 import { type ProviderKind, DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@t3tools/contracts";
 import { getModelOptions, normalizeModelSlug } from "@t3tools/shared/model";
 import {
+  type CustomQuickAction,
   getAppModelOptions,
   getCustomModelsForProvider,
   MAX_CUSTOM_MODEL_LENGTH,
+  MAX_CUSTOM_QUICK_ACTIONS,
+  MAX_QUICK_ACTION_LABEL_LENGTH,
+  MAX_QUICK_ACTION_PROMPT_LENGTH,
   MODEL_PROVIDER_SETTINGS,
   patchCustomModels,
   useAppSettings,
@@ -26,12 +37,13 @@ import {
 import { SidebarTrigger } from "../components/ui/sidebar";
 import { Switch } from "../components/ui/switch";
 import { SidebarInset } from "../components/ui/sidebar";
+import { Textarea } from "../components/ui/textarea";
 import { Tooltip, TooltipPopup, TooltipTrigger } from "../components/ui/tooltip";
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { isElectron } from "../env";
 import { useTheme } from "../hooks/useTheme";
 import { serverConfigQueryOptions } from "../lib/serverReactQuery";
-import { cn } from "../lib/utils";
+import { cn, randomUUID } from "../lib/utils";
 import { ensureNativeApi, readNativeApi } from "../nativeApi";
 
 const THEME_OPTIONS = [
@@ -49,6 +61,11 @@ const THEME_OPTIONS = [
     value: "dark",
     label: "Dark",
     description: "Always use the dark theme.",
+  },
+  {
+    value: "omarchy",
+    label: "Omarchy",
+    description: "Use your active Omarchy desktop theme.",
   },
 ] as const;
 
@@ -208,6 +225,15 @@ function SettingsRouteView() {
   >({});
   const [showAllCustomModels, setShowAllCustomModels] = useState(false);
 
+  const [quickActionLabel, setQuickActionLabel] = useState("");
+  const [quickActionPrompt, setQuickActionPrompt] = useState("");
+  const [quickActionEditBeforeSend, setQuickActionEditBeforeSend] = useState(false);
+  const [quickActionError, setQuickActionError] = useState<string | null>(null);
+  const [editingQuickActionId, setEditingQuickActionId] = useState<string | null>(null);
+  const [editingLabel, setEditingLabel] = useState("");
+  const [editingPrompt, setEditingPrompt] = useState("");
+  const [editingEditBeforeSend, setEditingEditBeforeSend] = useState(false);
+
   const codexBinaryPath = settings.codexBinaryPath;
   const codexHomePath = settings.codexHomePath;
   const claudeBinaryPath = settings.claudeBinaryPath;
@@ -264,6 +290,7 @@ function SettingsRouteView() {
       ? ["Custom models"]
       : []),
     ...(isInstallSettingsDirty ? ["Provider installs"] : []),
+    ...(settings.customQuickActions.length > 0 ? ["Quick actions"] : []),
   ];
 
   const openKeybindingsFile = useCallback(() => {
@@ -353,6 +380,89 @@ function SettingsRouteView() {
     [settings, updateSettings],
   );
 
+  const addQuickAction = useCallback(() => {
+    const label = quickActionLabel.trim();
+    const prompt = quickActionPrompt.trim();
+    if (!label) {
+      setQuickActionError("Label is required.");
+      return;
+    }
+    if (!prompt) {
+      setQuickActionError("Prompt is required.");
+      return;
+    }
+    if (label.length > MAX_QUICK_ACTION_LABEL_LENGTH) {
+      setQuickActionError(`Label must be ${MAX_QUICK_ACTION_LABEL_LENGTH} characters or less.`);
+      return;
+    }
+    if (prompt.length > MAX_QUICK_ACTION_PROMPT_LENGTH) {
+      setQuickActionError(`Prompt must be ${MAX_QUICK_ACTION_PROMPT_LENGTH} characters or less.`);
+      return;
+    }
+    if (settings.customQuickActions.some((a) => a.label === label)) {
+      setQuickActionError("An action with this label already exists.");
+      return;
+    }
+    if (settings.customQuickActions.length >= MAX_CUSTOM_QUICK_ACTIONS) {
+      setQuickActionError(`Maximum of ${MAX_CUSTOM_QUICK_ACTIONS} custom actions reached.`);
+      return;
+    }
+    const newAction: CustomQuickAction = {
+      id: randomUUID(),
+      label,
+      prompt,
+      editBeforeSend: quickActionEditBeforeSend,
+    };
+    updateSettings({
+      customQuickActions: [...settings.customQuickActions, newAction],
+    });
+    setQuickActionLabel("");
+    setQuickActionPrompt("");
+    setQuickActionEditBeforeSend(false);
+    setQuickActionError(null);
+  }, [quickActionLabel, quickActionPrompt, quickActionEditBeforeSend, settings, updateSettings]);
+
+  const removeQuickAction = useCallback(
+    (id: string) => {
+      updateSettings({
+        customQuickActions: settings.customQuickActions.filter((a) => a.id !== id),
+      });
+      if (editingQuickActionId === id) {
+        setEditingQuickActionId(null);
+      }
+    },
+    [settings, updateSettings, editingQuickActionId],
+  );
+
+  const startEditingQuickAction = useCallback((action: CustomQuickAction) => {
+    setEditingQuickActionId(action.id);
+    setEditingLabel(action.label);
+    setEditingPrompt(action.prompt);
+    setEditingEditBeforeSend(action.editBeforeSend);
+  }, []);
+
+  const saveEditingQuickAction = useCallback(() => {
+    if (!editingQuickActionId) return;
+    const label = editingLabel.trim();
+    const prompt = editingPrompt.trim();
+    if (!label || !prompt) return;
+    updateSettings({
+      customQuickActions: settings.customQuickActions.map((a) =>
+        a.id === editingQuickActionId
+          ? { ...a, label, prompt, editBeforeSend: editingEditBeforeSend }
+          : a,
+      ),
+    });
+    setEditingQuickActionId(null);
+  }, [
+    editingQuickActionId,
+    editingLabel,
+    editingPrompt,
+    editingEditBeforeSend,
+    settings,
+    updateSettings,
+  ]);
+
   async function restoreDefaults() {
     if (changedSettingLabels.length === 0) return;
 
@@ -435,7 +545,13 @@ function SettingsRouteView() {
                   <Select
                     value={theme}
                     onValueChange={(value) => {
-                      if (value !== "system" && value !== "light" && value !== "dark") return;
+                      if (
+                        value !== "system" &&
+                        value !== "light" &&
+                        value !== "dark" &&
+                        value !== "omarchy"
+                      )
+                        return;
                       setTheme(value);
                     }}
                   >
@@ -597,6 +713,156 @@ function SettingsRouteView() {
                   />
                 }
               />
+            </SettingsSection>
+
+            <SettingsSection title="Quick Actions">
+              <SettingsRow
+                title="Custom prompts"
+                description="Add quick actions to the Ask Claude menu."
+                resetAction={
+                  settings.customQuickActions.length > 0 ? (
+                    <SettingResetButton
+                      label="quick actions"
+                      onClick={() => {
+                        updateSettings({ customQuickActions: [] });
+                        setQuickActionError(null);
+                        setEditingQuickActionId(null);
+                      }}
+                    />
+                  ) : null
+                }
+              >
+                <div className="mt-4 border-t border-border pt-4">
+                  <div className="flex flex-col gap-2">
+                    <Input
+                      value={quickActionLabel}
+                      onChange={(event) => {
+                        setQuickActionLabel(event.target.value);
+                        if (quickActionError) setQuickActionError(null);
+                      }}
+                      placeholder="Label, e.g. Validate TS"
+                      spellCheck={false}
+                    />
+                    <Textarea
+                      value={quickActionPrompt}
+                      onChange={(event) => {
+                        setQuickActionPrompt(event.target.value);
+                        if (quickActionError) setQuickActionError(null);
+                      }}
+                      placeholder="Prompt, e.g. Run typecheck and build, report errors"
+                      rows={2}
+                      spellCheck={false}
+                    />
+                    <div className="flex items-center justify-between">
+                      <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                        <Switch
+                          checked={quickActionEditBeforeSend}
+                          onCheckedChange={(checked) =>
+                            setQuickActionEditBeforeSend(Boolean(checked))
+                          }
+                        />
+                        Edit before sending
+                      </label>
+                      <Button className="shrink-0" variant="outline" onClick={addQuickAction}>
+                        <PlusIcon className="size-3.5" />
+                        Add
+                      </Button>
+                    </div>
+                  </div>
+
+                  {quickActionError ? (
+                    <p className="mt-2 text-xs text-destructive">{quickActionError}</p>
+                  ) : null}
+
+                  {settings.customQuickActions.length > 0 ? (
+                    <div className="mt-3">
+                      {settings.customQuickActions.map((action) => (
+                        <div
+                          key={action.id}
+                          className="group border-t border-border/60 px-2 py-2 first:border-t-0"
+                        >
+                          {editingQuickActionId === action.id ? (
+                            <div className="flex flex-col gap-2">
+                              <Input
+                                value={editingLabel}
+                                onChange={(event) => setEditingLabel(event.target.value)}
+                                placeholder="Label"
+                                spellCheck={false}
+                              />
+                              <Textarea
+                                value={editingPrompt}
+                                onChange={(event) => setEditingPrompt(event.target.value)}
+                                placeholder="Prompt"
+                                rows={2}
+                                spellCheck={false}
+                              />
+                              <div className="flex items-center justify-between">
+                                <label className="flex items-center gap-2 text-xs text-muted-foreground">
+                                  <Switch
+                                    checked={editingEditBeforeSend}
+                                    onCheckedChange={(checked) =>
+                                      setEditingEditBeforeSend(Boolean(checked))
+                                    }
+                                  />
+                                  Edit before sending
+                                </label>
+                                <div className="flex gap-1">
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    onClick={() => setEditingQuickActionId(null)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                  <Button
+                                    size="xs"
+                                    variant="outline"
+                                    onClick={saveEditingQuickAction}
+                                  >
+                                    Save
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="flex items-start gap-2">
+                              <div className="min-w-0 flex-1">
+                                <span className="text-sm font-medium text-foreground">
+                                  {action.label}
+                                </span>
+                                {action.editBeforeSend ? (
+                                  <span className="ml-1.5 text-[10px] text-muted-foreground">
+                                    (edit)
+                                  </span>
+                                ) : null}
+                                <p className="truncate text-xs text-muted-foreground">
+                                  {action.prompt}
+                                </p>
+                              </div>
+                              <div className="flex shrink-0 gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                                <button
+                                  type="button"
+                                  aria-label={`Edit ${action.label}`}
+                                  onClick={() => startEditingQuickAction(action)}
+                                >
+                                  <PencilIcon className="size-3.5 text-muted-foreground hover:text-foreground" />
+                                </button>
+                                <button
+                                  type="button"
+                                  aria-label={`Remove ${action.label}`}
+                                  onClick={() => removeQuickAction(action.id)}
+                                >
+                                  <XIcon className="size-3.5 text-muted-foreground hover:text-foreground" />
+                                </button>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  ) : null}
+                </div>
+              </SettingsRow>
             </SettingsSection>
 
             <SettingsSection title="Models">

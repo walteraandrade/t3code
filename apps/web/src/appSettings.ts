@@ -13,10 +13,14 @@ import {
 } from "@t3tools/shared/model";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";
+import { AI_GIT_ACTIONS, type AiGitAction } from "./components/GitActionsControl.logic";
 
 const APP_SETTINGS_STORAGE_KEY = "t3code:app-settings:v1";
 const MAX_CUSTOM_MODEL_COUNT = 32;
 export const MAX_CUSTOM_MODEL_LENGTH = 256;
+export const MAX_CUSTOM_QUICK_ACTIONS = 32;
+export const MAX_QUICK_ACTION_LABEL_LENGTH = 64;
+export const MAX_QUICK_ACTION_PROMPT_LENGTH = 2048;
 
 export const TimestampFormat = Schema.Literals(["locale", "12-hour", "24-hour"]);
 export type TimestampFormat = typeof TimestampFormat.Type;
@@ -50,6 +54,14 @@ const withDefaults =
       Schema.withDecodingDefault(() => fallback()),
     );
 
+const CustomQuickActionSchema = Schema.Struct({
+  id: Schema.String,
+  label: Schema.String.check(Schema.isMaxLength(MAX_QUICK_ACTION_LABEL_LENGTH)),
+  prompt: Schema.String.check(Schema.isMaxLength(MAX_QUICK_ACTION_PROMPT_LENGTH)),
+  editBeforeSend: Schema.Boolean.pipe(withDefaults(() => false)),
+});
+export type CustomQuickAction = typeof CustomQuickActionSchema.Type;
+
 export const AppSettingsSchema = Schema.Struct({
   claudeBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
   codexBinaryPath: Schema.String.check(Schema.isMaxLength(4096)).pipe(withDefaults(() => "")),
@@ -61,6 +73,7 @@ export const AppSettingsSchema = Schema.Struct({
   customCodexModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   customClaudeModels: Schema.Array(Schema.String).pipe(withDefaults(() => [])),
   textGenerationModel: Schema.optional(TrimmedNonEmptyString),
+  customQuickActions: Schema.Array(CustomQuickActionSchema).pipe(withDefaults(() => [])),
 });
 export type AppSettings = typeof AppSettingsSchema.Type;
 export interface AppModelOption {
@@ -121,11 +134,34 @@ export function normalizeCustomModelSlugs(
   return normalizedModels;
 }
 
+function normalizeCustomQuickActions(actions: readonly CustomQuickAction[]): CustomQuickAction[] {
+  const seen = new Set<string>();
+  const result: CustomQuickAction[] = [];
+  for (const action of actions) {
+    const label = action.label.trim();
+    const prompt = action.prompt.trim();
+    if (
+      !label ||
+      !prompt ||
+      label.length > MAX_QUICK_ACTION_LABEL_LENGTH ||
+      prompt.length > MAX_QUICK_ACTION_PROMPT_LENGTH ||
+      seen.has(action.id)
+    ) {
+      continue;
+    }
+    seen.add(action.id);
+    result.push({ ...action, label, prompt });
+    if (result.length >= MAX_CUSTOM_QUICK_ACTIONS) break;
+  }
+  return result;
+}
+
 function normalizeAppSettings(settings: AppSettings): AppSettings {
   return {
     ...settings,
     customCodexModels: normalizeCustomModelSlugs(settings.customCodexModels, "codex"),
     customClaudeModels: normalizeCustomModelSlugs(settings.customClaudeModels, "claudeAgent"),
+    customQuickActions: normalizeCustomQuickActions(settings.customQuickActions),
   };
 }
 
@@ -274,4 +310,10 @@ export function useAppSettings() {
     resetSettings,
     defaults: DEFAULT_APP_SETTINGS,
   } as const;
+}
+
+export function getAllAskClaudeActions(
+  settings: Pick<AppSettings, "customQuickActions">,
+): AiGitAction[] {
+  return [...AI_GIT_ACTIONS, ...settings.customQuickActions];
 }

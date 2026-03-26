@@ -194,6 +194,9 @@ export function createWsNativeApi(): NativeApi {
           callback(message.data),
         ),
     },
+    theme: {
+      getOmarchyColors: () => transport.request(WS_METHODS.themeGetOmarchyColors),
+    },
   };
 
   instance = { api, transport };

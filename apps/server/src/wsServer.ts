@@ -199,6 +199,73 @@ function stripRequestTag<T extends { _tag: string }>(body: T) {
   return Struct.omit(body, ["_tag"]);
 }
 
+/**
+ * Parse an Omarchy `colors.toml` file into an {@link OmarchyColors} object.
+ * Returns `null` if any of the 22 required color keys are missing or malformed.
+ */
+function parseOmarchyToml(raw: string): import("@t3tools/contracts").OmarchyColors | null {
+  const colorMap: Record<string, string> = {};
+  const re = /^(\w+)\s*=\s*"(#[0-9a-fA-F]{6})"/gm;
+  let match;
+  while ((match = re.exec(raw)) !== null) {
+    colorMap[match[1]!] = match[2]!;
+  }
+
+  const required = [
+    "background",
+    "foreground",
+    "accent",
+    "cursor",
+    "selection_foreground",
+    "selection_background",
+    "color0",
+    "color1",
+    "color2",
+    "color3",
+    "color4",
+    "color5",
+    "color6",
+    "color7",
+    "color8",
+    "color9",
+    "color10",
+    "color11",
+    "color12",
+    "color13",
+    "color14",
+    "color15",
+  ] as const;
+
+  for (const key of required) {
+    if (!colorMap[key]) return null;
+  }
+
+  return {
+    background: colorMap["background"]!,
+    foreground: colorMap["foreground"]!,
+    accent: colorMap["accent"]!,
+    cursor: colorMap["cursor"]!,
+    selectionForeground: colorMap["selection_foreground"]!,
+    selectionBackground: colorMap["selection_background"]!,
+    color0: colorMap["color0"]!,
+    color1: colorMap["color1"]!,
+    color2: colorMap["color2"]!,
+    color3: colorMap["color3"]!,
+    color4: colorMap["color4"]!,
+    color5: colorMap["color5"]!,
+    color6: colorMap["color6"]!,
+    color7: colorMap["color7"]!,
+    color8: colorMap["color8"]!,
+    color9: colorMap["color9"]!,
+    color10: colorMap["color10"]!,
+    color11: colorMap["color11"]!,
+    color12: colorMap["color12"]!,
+    color13: colorMap["color13"]!,
+    color14: colorMap["color14"]!,
+    color15: colorMap["color15"]!,
+  };
+}
+
 const encodeWsResponse = Schema.encodeEffect(Schema.fromJsonString(WsResponse));
 const decodeWebSocketRequest = decodeJsonResult(WebSocketRequest);
 
@@ -887,6 +954,38 @@ export const createServer = Effect.fn(function* (): Effect.fn.Return<
         const body = stripRequestTag(request.body);
         const keybindingsConfig = yield* keybindingsManager.upsertKeybindingRule(body);
         return { keybindings: keybindingsConfig, issues: [] };
+      }
+
+      case WS_METHODS.themeGetOmarchyColors: {
+        const colorsPath = yield* expandHomePath("~/.config/omarchy/current/theme/colors.toml");
+        const themeNamePath = yield* expandHomePath("~/.config/omarchy/current/theme.name");
+
+        const colorsInfo = yield* fileSystem
+          .stat(colorsPath)
+          .pipe(Effect.catch(() => Effect.succeed(null)));
+
+        if (!colorsInfo || colorsInfo.type !== "File") {
+          return { available: false };
+        }
+
+        const raw = yield* fileSystem.readFileString(colorsPath).pipe(
+          Effect.mapError(
+            (cause) =>
+              new RouteRequestError({
+                message: `Failed to read Omarchy colors.toml: ${String(cause)}`,
+              }),
+          ),
+        );
+
+        const colors = parseOmarchyToml(raw);
+        if (!colors) return { available: false };
+
+        const themeName = yield* fileSystem.readFileString(themeNamePath).pipe(
+          Effect.map((s) => s.trim()),
+          Effect.catch(() => Effect.succeed<string | undefined>(undefined)),
+        );
+
+        return { available: true, themeName, colors };
       }
 
       default: {

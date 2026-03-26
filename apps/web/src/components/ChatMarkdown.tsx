@@ -1,16 +1,12 @@
 import { DiffsHighlighter, getSharedHighlighter, SupportedLanguages } from "@pierre/diffs";
-import { CheckIcon, CopyIcon } from "lucide-react";
 import React, {
   Children,
   Suspense,
   isValidElement,
   use,
-  useCallback,
   memo,
   useEffect,
   useMemo,
-  useRef,
-  useState,
   type ReactNode,
 } from "react";
 import type { Components } from "react-markdown";
@@ -23,6 +19,9 @@ import { LRUCache } from "../lib/lruCache";
 import { useTheme } from "../hooks/useTheme";
 import { resolveMarkdownFileLinkTarget } from "../markdown-links";
 import { readNativeApi } from "../nativeApi";
+import { extractFenceLanguage, isMermaidFence } from "./chatMarkdownFence";
+import { MarkdownCodeBlockFrame } from "./MarkdownCodeBlockFrame";
+import { MermaidBlock } from "./MermaidBlock";
 
 class CodeHighlightErrorBoundary extends React.Component<
   { fallback: ReactNode; children: ReactNode },
@@ -51,7 +50,6 @@ interface ChatMarkdownProps {
   isStreaming?: boolean;
 }
 
-const CODE_FENCE_LANGUAGE_REGEX = /(?:^|\s)language-([^\s]+)/;
 const MAX_HIGHLIGHT_CACHE_ENTRIES = 500;
 const MAX_HIGHLIGHT_CACHE_MEMORY_BYTES = 50 * 1024 * 1024;
 const highlightedCodeCache = new LRUCache<string>(
@@ -59,13 +57,6 @@ const highlightedCodeCache = new LRUCache<string>(
   MAX_HIGHLIGHT_CACHE_MEMORY_BYTES,
 );
 const highlighterPromiseCache = new Map<string, Promise<DiffsHighlighter>>();
-
-function extractFenceLanguage(className: string | undefined): string {
-  const match = className?.match(CODE_FENCE_LANGUAGE_REGEX);
-  const raw = match?.[1] ?? "text";
-  // Shiki doesn't bundle a gitignore grammar; ini is a close match (#685)
-  return raw === "gitignore" ? "ini" : raw;
-}
 
 function nodeToPlainText(node: ReactNode): string {
   if (typeof node === "string" || typeof node === "number") {
@@ -129,54 +120,6 @@ function getHighlighterPromise(language: string): Promise<DiffsHighlighter> {
   });
   highlighterPromiseCache.set(language, promise);
   return promise;
-}
-
-function MarkdownCodeBlock({ code, children }: { code: string; children: ReactNode }) {
-  const [copied, setCopied] = useState(false);
-  const copiedTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const handleCopy = useCallback(() => {
-    if (typeof navigator === "undefined" || navigator.clipboard == null) {
-      return;
-    }
-    void navigator.clipboard
-      .writeText(code)
-      .then(() => {
-        if (copiedTimerRef.current != null) {
-          clearTimeout(copiedTimerRef.current);
-        }
-        setCopied(true);
-        copiedTimerRef.current = setTimeout(() => {
-          setCopied(false);
-          copiedTimerRef.current = null;
-        }, 1200);
-      })
-      .catch(() => undefined);
-  }, [code]);
-
-  useEffect(
-    () => () => {
-      if (copiedTimerRef.current != null) {
-        clearTimeout(copiedTimerRef.current);
-        copiedTimerRef.current = null;
-      }
-    },
-    [],
-  );
-
-  return (
-    <div className="chat-markdown-codeblock">
-      <button
-        type="button"
-        className="chat-markdown-copy-button"
-        onClick={handleCopy}
-        title={copied ? "Copied" : "Copy code"}
-        aria-label={copied ? "Copied" : "Copy code"}
-      >
-        {copied ? <CheckIcon className="size-3" /> : <CopyIcon className="size-3" />}
-      </button>
-      {children}
-    </div>
-  );
 }
 
 interface SuspenseShikiCodeBlockProps {
@@ -269,8 +212,13 @@ function ChatMarkdown({ text, cwd, isStreaming = false }: ChatMarkdownProps) {
           return <pre {...props}>{children}</pre>;
         }
 
+        const language = extractFenceLanguage(codeBlock.className);
+        if (!isStreaming && isMermaidFence(language)) {
+          return <MermaidBlock code={codeBlock.code} theme={resolvedTheme} />;
+        }
+
         return (
-          <MarkdownCodeBlock code={codeBlock.code}>
+          <MarkdownCodeBlockFrame code={codeBlock.code}>
             <CodeHighlightErrorBoundary fallback={<pre {...props}>{children}</pre>}>
               <Suspense fallback={<pre {...props}>{children}</pre>}>
                 <SuspenseShikiCodeBlock
@@ -281,11 +229,11 @@ function ChatMarkdown({ text, cwd, isStreaming = false }: ChatMarkdownProps) {
                 />
               </Suspense>
             </CodeHighlightErrorBoundary>
-          </MarkdownCodeBlock>
+          </MarkdownCodeBlockFrame>
         );
       },
     }),
-    [cwd, diffThemeName, isStreaming],
+    [cwd, diffThemeName, isStreaming, resolvedTheme],
   );
 
   return (
