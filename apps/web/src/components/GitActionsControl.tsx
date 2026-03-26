@@ -13,17 +13,18 @@ import {
   type AiGitAction,
   buildGitActionProgressStages,
   buildMenuItems,
-  type DefaultBranchConfirmableAction,
   type GitActionIconName,
   type GitActionMenuItem,
   type GitQuickAction,
+  type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
   resolveDefaultBranchActionDialogCopy,
   resolveQuickAction,
   summarizeGitResult,
 } from "./GitActionsControl.logic";
+import { getAllAskClaudeActions } from "~/gitQuickActions";
+import { useSettings } from "~/hooks/useSettings";
 import { useSendThreadMessage } from "~/lib/useSendThreadMessage";
-import { getAllAskClaudeActions, useAppSettings } from "~/appSettings";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -208,7 +209,7 @@ function GitQuickActionIcon({ quickAction }: { quickAction: GitQuickAction }) {
 }
 
 export default function GitActionsControl({ gitCwd, activeThreadId }: GitActionsControlProps) {
-  const { settings } = useAppSettings();
+  const customQuickActions = useSettings().customQuickActions;
   const threadToastData = useMemo(
     () => (activeThreadId ? { threadId: activeThreadId } : undefined),
     [activeThreadId],
@@ -266,7 +267,6 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
     gitRunStackedActionMutationOptions({
       cwd: gitCwd,
       queryClient,
-      model: settings.textGenerationModel ?? null,
     }),
   );
   const pullMutation = useMutation(gitPullMutationOptions({ cwd: gitCwd, queryClient }));
@@ -352,13 +352,16 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
           progress.lastOutputLine = null;
           break;
         case "action_finished":
-          progress.phaseStartedAtMs = null;
-          progress.hookStartedAtMs = null;
-          break;
+          // Don't clear timestamps here — the HTTP response handler (line 496)
+          // sets activeGitActionProgressRef to null and shows the success toast.
+          // Clearing timestamps early causes the "Running for Xs" description
+          // to disappear before the success state renders, leaving a bare
+          // "Pushing..." toast in the gap between the WS event and HTTP response.
+          return;
         case "action_failed":
-          progress.phaseStartedAtMs = null;
-          progress.hookStartedAtMs = null;
-          break;
+          // Same reasoning as action_finished — let the HTTP error handler
+          // manage the final toast state to avoid a flash of bare title.
+          return;
       }
 
       updateActiveProgressToast();
@@ -796,7 +799,7 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
           {initMutation.isPending ? "Initializing..." : "Initialize Git"}
         </Button>
       ) : (
-        <Group aria-label="Git actions">
+        <Group aria-label="Git actions" className="shrink-0">
           {quickActionDisabledReason ? (
             <Popover>
               <PopoverTrigger
@@ -912,7 +915,7 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
         </Group>
       )}
 
-      <Group aria-label="Ask Claude git actions">
+      <Group aria-label="Ask Claude git actions" className="shrink-0">
         <Menu>
           <MenuTrigger
             render={
@@ -931,12 +934,12 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
             <ChevronDownIcon aria-hidden="true" className="ml-0.5 size-4" />
           </MenuTrigger>
           <MenuPopup align="end">
-            {getAllAskClaudeActions(settings).map((action, index) => (
+            {getAllAskClaudeActions(customQuickActions).map((action, index) => (
               <MenuItem
                 key={action.id}
                 onClick={() => runAiGitAction(action)}
                 className={
-                  index === AI_GIT_ACTIONS.length && settings.customQuickActions.length > 0
+                  index === AI_GIT_ACTIONS.length && customQuickActions.length > 0
                     ? "border-t border-border"
                     : undefined
                 }
@@ -1143,26 +1146,30 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
           </DialogFooter>
         </DialogPopup>
       </Dialog>
-      <Dialog open={aiPromptDialogOpen} onOpenChange={setAiPromptDialogOpen}>
+
+      <Dialog
+        open={aiPromptDialogOpen}
+        onOpenChange={(open) => {
+          setAiPromptDialogOpen(open);
+        }}
+      >
         <DialogPopup>
           <DialogHeader>
-            <DialogTitle>Ask Claude</DialogTitle>
-            <DialogDescription>Edit the prompt before sending to Claude.</DialogDescription>
+            <DialogTitle>Edit Ask Claude prompt</DialogTitle>
+            <DialogDescription>Adjust the prompt before sending it to Claude.</DialogDescription>
           </DialogHeader>
           <DialogPanel>
             <Textarea
               value={aiPromptText}
-              onChange={(e) => setAiPromptText(e.target.value)}
-              size="sm"
-              rows={4}
-              autoFocus
+              onChange={(event) => setAiPromptText(event.target.value)}
+              rows={5}
             />
           </DialogPanel>
           <DialogFooter>
             <Button variant="outline" size="sm" onClick={() => setAiPromptDialogOpen(false)}>
               Cancel
             </Button>
-            <Button size="sm" disabled={!aiPromptText.trim()} onClick={submitAiPromptDialog}>
+            <Button size="sm" onClick={submitAiPromptDialog}>
               Send
             </Button>
           </DialogFooter>

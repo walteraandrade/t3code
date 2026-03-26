@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import type { ThreadId } from "@t3tools/contracts";
-import { useAppSettings } from "~/appSettings";
 import { readNativeApi } from "~/nativeApi";
 import { useStore } from "~/store";
 import { DEFAULT_INTERACTION_MODE, DEFAULT_RUNTIME_MODE } from "~/types";
@@ -8,7 +7,6 @@ import { newCommandId, newMessageId } from "./utils";
 
 export const useSendThreadMessage = (threadId: ThreadId | null) => {
   const thread = useStore((s) => s.threads.find((t) => t.id === threadId) ?? null);
-  const { settings } = useAppSettings();
 
   return useCallback(
     async (text: string): Promise<void> => {
@@ -25,14 +23,12 @@ export const useSendThreadMessage = (threadId: ThreadId | null) => {
           text,
           attachments: [],
         },
-        provider: thread.session?.provider ?? undefined,
-        model: thread.model ?? undefined,
+        modelSelection: thread.modelSelection,
         runtimeMode: thread.runtimeMode ?? DEFAULT_RUNTIME_MODE,
         interactionMode: thread.interactionMode ?? DEFAULT_INTERACTION_MODE,
-        assistantDeliveryMode: settings.enableAssistantStreaming ? "streaming" : "buffered",
         createdAt: new Date().toISOString(),
       });
     },
-    [threadId, thread, settings.enableAssistantStreaming],
+    [threadId, thread],
   );
 };
