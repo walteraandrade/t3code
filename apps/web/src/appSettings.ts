@@ -1,19 +1,19 @@
 import { useCallback } from "react";
 import { Option, Schema } from "effect";
 import {
+  DEFAULT_MODEL_BY_PROVIDER,
   TrimmedNonEmptyString,
   type ProviderKind,
-  type ProviderStartOptions,
 } from "@t3tools/contracts";
-import {
-  getDefaultModel,
-  getModelOptions,
-  normalizeModelSlug,
-  resolveSelectableModel,
-} from "@t3tools/shared/model";
+import { normalizeModelSlug, resolveSelectableModel } from "@t3tools/shared/model";
 import { useLocalStorage } from "./hooks/useLocalStorage";
 import { EnvMode } from "./components/BranchToolbar.logic";
 import { AI_GIT_ACTIONS, type AiGitAction } from "./components/GitActionsControl.logic";
+
+type ProviderStartOptions = {
+  codex?: { binaryPath?: string; homePath?: string };
+  claudeAgent?: { binaryPath?: string };
+};
 
 const APP_SETTINGS_STORAGE_KEY = "t3code:app-settings:v1";
 const MAX_CUSTOM_MODEL_COUNT = 32;
@@ -37,8 +37,8 @@ export type ProviderCustomModelConfig = {
 };
 
 const BUILT_IN_MODEL_SLUGS_BY_PROVIDER: Record<ProviderKind, ReadonlySet<string>> = {
-  codex: new Set(getModelOptions("codex").map((option) => option.slug)),
-  claudeAgent: new Set(getModelOptions("claudeAgent").map((option) => option.slug)),
+  codex: new Set<string>(),
+  claudeAgent: new Set<string>(),
 };
 
 const withDefaults =
@@ -202,12 +202,8 @@ export function getAppModelOptions(
   customModels: readonly string[],
   selectedModel?: string | null,
 ): AppModelOption[] {
-  const options: AppModelOption[] = getModelOptions(provider).map(({ slug, name }) => ({
-    slug,
-    name,
-    isCustom: false,
-  }));
-  const seen = new Set(options.map((option) => option.slug));
+  const options: AppModelOption[] = [];
+  const seen = new Set<string>();
   const trimmedSelectedModel = selectedModel?.trim().toLowerCase();
 
   for (const slug of normalizeCustomModelSlugs(customModels, provider)) {
@@ -249,7 +245,9 @@ export function resolveAppModelSelection(
 ): string {
   const customModelsForProvider = customModels[provider];
   const options = getAppModelOptions(provider, customModelsForProvider, selectedModel);
-  return resolveSelectableModel(provider, selectedModel, options) ?? getDefaultModel(provider);
+  return (
+    resolveSelectableModel(provider, selectedModel, options) ?? DEFAULT_MODEL_BY_PROVIDER[provider]
+  );
 }
 
 export function getCustomModelOptionsByProvider(

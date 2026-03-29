@@ -222,6 +222,7 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
   const [aiPromptDialogOpen, setAiPromptDialogOpen] = useState(false);
   const [aiPromptText, setAiPromptText] = useState("");
   const activeGitActionProgressRef = useRef<ActiveGitActionProgress | null>(null);
+  const { settings } = useAppSettings();
 
   const updateActiveProgressToast = useCallback(() => {
     const progress = activeGitActionProgressRef.current;

@@ -5,6 +5,7 @@ import {
   FolderIcon,
   GitPullRequestIcon,
   PlusIcon,
+  RocketIcon,
   SettingsIcon,
   SquarePenIcon,
   TerminalIcon,
@@ -52,7 +53,7 @@ import {
 import { isElectron } from "../env";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { ForkSidebarHeader } from "../fork/components/ForkSidebarHeader";
-import { cn, isLinuxPlatform, isMacPlatform, newCommandId, newProjectId } from "../lib/utils";
+import { isLinuxPlatform, isMacPlatform, newCommandId, newProjectId } from "../lib/utils";
 import { useStore } from "../store";
 import { useUiStateStore } from "../uiStateStore";
 import {
@@ -77,10 +78,13 @@ import { SettingsSidebarNav } from "./settings/SettingsSidebarNav";
 import {
   getArm64IntelBuildWarningDescription,
   getDesktopUpdateActionError,
+  getDesktopUpdateButtonTooltip,
   getDesktopUpdateInstallConfirmationMessage,
   isDesktopUpdateButtonDisabled,
   resolveDesktopUpdateButtonAction,
+  shouldHighlightDesktopUpdateError,
   shouldShowArm64IntelBuildWarning,
+  shouldShowDesktopUpdateButton,
   shouldToastDesktopUpdateActionResult,
 } from "./desktopUpdate.logic";
 import { Alert, AlertAction, AlertDescription, AlertTitle } from "./ui/alert";
@@ -216,10 +220,6 @@ const SIDEBAR_PROJECT_CARD_CLASS =
 const SIDEBAR_PROJECT_HEADER_ROW_CLASS =
   "gap-2 border-b border-sidebar-border/65 px-2 py-1.5 text-left hover:bg-accent/60 hover:text-sidebar-accent-foreground";
 const SIDEBAR_PROJECT_TITLE_CLASS = "flex-1 truncate text-[11px] font-semibold text-foreground";
-const SIDEBAR_THREAD_ROW_CONTAINER_CLASS =
-  "h-7 border border-transparent px-2.5 text-sidebar-foreground/90 hover:border-sidebar-border/45";
-const SIDEBAR_THREAD_TIMESTAMP_CLASS =
-  "text-[10px] tabular-nums text-muted-foreground/38 transition-colors";
 const loadedProjectFaviconSrcs = new Set<string>();
 interface TerminalStatusIndicator {
   label: "Terminal process running";
@@ -462,8 +462,9 @@ function SortableProjectItem({
         transform: CSS.Translate.toString(transform),
         transition,
       }}
-      className={`group/menu-item relative rounded-md bg-foreground/[0.02] ${isDragging ? "z-20 opacity-80" : ""
-        } ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
+      className={`group/menu-item relative rounded-md bg-foreground/[0.02] ${
+        isDragging ? "z-20 opacity-80" : ""
+      } ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
       data-sidebar="menu-item"
       data-slot="sidebar-menu-item"
     >
@@ -1876,10 +1877,25 @@ export default function Sidebar() {
     };
   }, []);
 
+  const showDesktopUpdateButton = isElectron && shouldShowDesktopUpdateButton(desktopUpdateState);
+  const desktopUpdateTooltip = desktopUpdateState
+    ? getDesktopUpdateButtonTooltip(desktopUpdateState)
+    : "Update available";
   const desktopUpdateButtonDisabled = isDesktopUpdateButtonDisabled(desktopUpdateState);
   const desktopUpdateButtonAction = desktopUpdateState
     ? resolveDesktopUpdateButtonAction(desktopUpdateState)
     : "none";
+  const desktopUpdateButtonInteractivityClasses = desktopUpdateButtonDisabled
+    ? "cursor-not-allowed opacity-60"
+    : "hover:bg-accent hover:text-foreground";
+  const desktopUpdateButtonClasses =
+    desktopUpdateState?.status === "downloaded"
+      ? "text-emerald-500"
+      : desktopUpdateState?.status === "downloading"
+        ? "text-sky-400"
+        : shouldHighlightDesktopUpdateError(desktopUpdateState)
+          ? "text-rose-500 animate-pulse"
+          : "text-amber-500 animate-pulse";
   const showArm64IntelBuildWarning =
     isElectron && shouldShowArm64IntelBuildWarning(desktopUpdateState);
   const arm64IntelBuildWarningDescription =

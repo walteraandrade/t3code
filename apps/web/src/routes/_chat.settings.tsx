@@ -9,8 +9,13 @@ import {
   XIcon,
 } from "lucide-react";
 import { type ReactNode, useCallback, useState } from "react";
-import { type ProviderKind, DEFAULT_GIT_TEXT_GENERATION_MODEL } from "@t3tools/contracts";
-import { getModelOptions, normalizeModelSlug } from "@t3tools/shared/model";
+import {
+  type ProviderKind,
+  DEFAULT_GIT_TEXT_GENERATION_MODEL_BY_PROVIDER,
+} from "@t3tools/contracts";
+import { normalizeModelSlug } from "@t3tools/shared/model";
+
+const DEFAULT_GIT_TEXT_GENERATION_MODEL = DEFAULT_GIT_TEXT_GENERATION_MODEL_BY_PROVIDER.codex;
 import {
   type CustomQuickAction,
   getAppModelOptions,
@@ -325,13 +330,6 @@ function SettingsRouteView() {
         setCustomModelErrorByProvider((existing) => ({
           ...existing,
           [provider]: "Enter a model slug.",
-        }));
-        return;
-      }
-      if (getModelOptions(provider).some((option) => option.slug === normalized)) {
-        setCustomModelErrorByProvider((existing) => ({
-          ...existing,
-          [provider]: "That model is already built in.",
         }));
         return;
       }
