@@ -20,12 +20,14 @@ export interface AppState {
   projects: Project[];
   threads: Thread[];
   bootstrapComplete: boolean;
+  threadsHydrated: boolean;
 }
 
 const initialState: AppState = {
   projects: [],
   threads: [],
   bootstrapComplete: false,
+  threadsHydrated: false,
 };
 const MAX_THREAD_MESSAGES = 2_000;
 const MAX_THREAD_CHECKPOINTS = 500;
@@ -410,6 +412,7 @@ export function syncServerReadModel(state: AppState, readModel: OrchestrationRea
     projects,
     threads,
     bootstrapComplete: true,
+    threadsHydrated: true,
   };
 }
 

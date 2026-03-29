@@ -197,6 +197,7 @@ import {
   useServerConfig,
   useServerKeybindings,
 } from "~/rpc/serverState";
+import { getDraftThreadStateById } from "../threadRoutePresence";
 
 const ATTACHMENT_PREVIEW_HANDOFF_TTL_MS = 5000;
 const IMAGE_SIZE_LIMIT_LABEL = `${Math.round(PROVIDER_SEND_TURN_MAX_IMAGE_BYTES / (1024 * 1024))}MB`;
@@ -476,8 +477,8 @@ export default function ChatView({ threadId }: ChatViewProps) {
   const clearProjectDraftThreadId = useComposerDraftStore(
     (store) => store.clearProjectDraftThreadId,
   );
-  const draftThread = useComposerDraftStore(
-    (store) => store.draftThreadsByThreadId[threadId] ?? null,
+  const draftThread = useComposerDraftStore((store) =>
+    getDraftThreadStateById(threadId, store.draftThreadsByThreadId),
   );
   const promptRef = useRef(prompt);
   const [showScrollToBottom, setShowScrollToBottom] = useState(false);
@@ -646,6 +647,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
         : undefined,
     [draftThread, fallbackDraftProject?.defaultModelSelection, localDraftError, threadId],
   );
+  const draftThreadExists = draftThread !== null;
   const activeThread = serverThread ?? localDraftThread;
   const runtimeMode =
     composerDraft.runtimeMode ?? activeThread?.runtimeMode ?? DEFAULT_RUNTIME_MODE;
@@ -676,6 +678,14 @@ export default function ChatView({ threadId }: ChatViewProps) {
   );
   const latestTurnSettled = isLatestTurnSettled(activeLatestTurn, activeThread?.session ?? null);
   const activeProject = useProjectById(activeThread?.projectId);
+
+  useEffect(() => {
+    if (!serverThread && draftThreadExists && !localDraftThread) {
+      console.error(
+        `Draft-thread activation invariant violated for route ${threadId}: draft exists but ChatView could not materialize it.`,
+      );
+    }
+  }, [draftThreadExists, localDraftThread, serverThread, threadId]);
 
   const openPullRequestDialog = useCallback(
     (reference?: string) => {
@@ -3731,6 +3741,10 @@ export default function ChatView({ threadId }: ChatViewProps) {
 
   // Empty state: no active thread
   if (!activeThread) {
+    if (draftThreadExists) {
+      return null;
+    }
+
     return (
       <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background text-muted-foreground/40">
         {!isElectron && (
@@ -3756,7 +3770,17 @@ export default function ChatView({ threadId }: ChatViewProps) {
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
+    <div className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-x-hidden bg-background">
+      <div
+        className="pointer-events-none absolute inset-0 z-0"
+        style={{
+          backgroundImage: "url('/conversation-bg.webp')",
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+          backgroundAttachment: "fixed",
+          opacity: 0.07,
+        }}
+      />
       {/* Top bar */}
       <header
         className={cn(

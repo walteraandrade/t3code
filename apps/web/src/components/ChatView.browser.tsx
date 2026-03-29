@@ -871,18 +871,26 @@ async function waitForServerConfigToApply(): Promise<void> {
   await waitForLayout();
 }
 
-function dispatchChatNewShortcut(): void {
+function dispatchShortcut(options: { key: string; shiftKey?: boolean }): void {
   const useMetaForMod = isMacPlatform(navigator.platform);
   window.dispatchEvent(
     new KeyboardEvent("keydown", {
-      key: "o",
-      shiftKey: true,
+      key: options.key,
+      shiftKey: options.shiftKey ?? false,
       metaKey: useMetaForMod,
       ctrlKey: !useMetaForMod,
       bubbles: true,
       cancelable: true,
     }),
   );
+}
+
+function dispatchChatNewShortcut(): void {
+  dispatchShortcut({ key: "o", shiftKey: true });
+}
+
+function dispatchChatNewLocalShortcut(): void {
+  dispatchShortcut({ key: "n", shiftKey: true });
 }
 
 async function triggerChatNewShortcutUntilPath(
@@ -894,6 +902,24 @@ async function triggerChatNewShortcutUntilPath(
   const deadline = Date.now() + 8_000;
   while (Date.now() < deadline) {
     dispatchChatNewShortcut();
+    await waitForLayout();
+    pathname = router.state.location.pathname;
+    if (predicate(pathname)) {
+      return pathname;
+    }
+  }
+  throw new Error(`${errorMessage} Last path: ${pathname}`);
+}
+
+async function triggerChatNewLocalShortcutUntilPath(
+  router: ReturnType<typeof getRouter>,
+  predicate: (pathname: string) => boolean,
+  errorMessage: string,
+): Promise<string> {
+  let pathname = router.state.location.pathname;
+  const deadline = Date.now() + 8_000;
+  while (Date.now() < deadline) {
+    dispatchChatNewLocalShortcut();
     await waitForLayout();
     pathname = router.state.location.pathname;
     if (predicate(pathname)) {
@@ -1003,6 +1029,7 @@ async function mountChatView(options: {
   snapshot: OrchestrationReadModel;
   configureFixture?: (fixture: TestFixture) => void;
   resolveRpc?: (body: NormalizedWsRpcRequestBody) => unknown | undefined;
+  initialPath?: string;
 }): Promise<MountedChatView> {
   fixture = buildFixture(options.snapshot);
   options.configureFixture?.(fixture);
@@ -1022,7 +1049,7 @@ async function mountChatView(options: {
 
   const router = getRouter(
     createMemoryHistory({
-      initialEntries: [`/${THREAD_ID}`],
+      initialEntries: [options.initialPath ?? `/${THREAD_ID}`],
     }),
   );
 
@@ -2177,6 +2204,40 @@ describe("ChatView timeline estimator parity (full app)", () => {
     }
   });
 
+  it("creates and displays a draft thread from the sidebar new-thread button", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-sidebar-new-thread-regression" as MessageId,
+        targetText: "sidebar new-thread regression",
+      }),
+    });
+
+    try {
+      const newThreadButton = page.getByTestId("new-thread-button");
+      await expect.element(newThreadButton).toBeInTheDocument();
+
+      await newThreadButton.click();
+
+      const newThreadPath = await waitForURL(
+        mounted.router,
+        (path) => UUID_ROUTE_RE.test(path),
+        "Sidebar new-thread should navigate to a draft thread UUID route.",
+      );
+
+      await waitForComposerEditor();
+      await waitForLayout();
+
+      expect(mounted.router.state.location.pathname).toBe(newThreadPath);
+      await expect
+        .element(page.getByText("Select a thread or create a new one to get started."))
+        .not.toBeInTheDocument();
+      await expect.element(page.getByTestId("composer-editor")).toBeInTheDocument();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
   it("snapshots sticky codex settings into a new draft thread", async () => {
     useComposerDraftStore.setState({
       stickyModelSelectionByProvider: {
@@ -2437,6 +2498,175 @@ describe("ChatView timeline estimator parity (full app)", () => {
         (path) => UUID_ROUTE_RE.test(path),
         "Route should have changed to a new draft thread UUID from the shortcut.",
       );
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("creates and displays a draft thread from the global chat.newLocal shortcut", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-chat-new-local-shortcut-test" as MessageId,
+        targetText: "chat new local shortcut test",
+      }),
+      configureFixture: (nextFixture) => {
+        nextFixture.serverConfig = {
+          ...nextFixture.serverConfig,
+          keybindings: [
+            {
+              command: "chat.newLocal",
+              shortcut: {
+                key: "n",
+                metaKey: false,
+                ctrlKey: false,
+                shiftKey: true,
+                altKey: false,
+                modKey: true,
+              },
+              whenAst: {
+                type: "not",
+                node: { type: "identifier", name: "terminalFocus" },
+              },
+            },
+          ],
+        };
+      },
+    });
+
+    try {
+      await waitForServerConfigToApply();
+      const composerEditor = await waitForComposerEditor();
+      composerEditor.focus();
+      await waitForLayout();
+
+      const newThreadPath = await triggerChatNewLocalShortcutUntilPath(
+        mounted.router,
+        (path) => UUID_ROUTE_RE.test(path),
+        "Route should have changed to a new draft thread UUID from chat.newLocal.",
+      );
+
+      await waitForComposerEditor();
+      await waitForLayout();
+
+      expect(mounted.router.state.location.pathname).toBe(newThreadPath);
+      await expect
+        .element(page.getByText("Select a thread or create a new one to get started."))
+        .not.toBeInTheDocument();
+      await expect.element(page.getByTestId("composer-editor")).toBeInTheDocument();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("creates a draft thread from the index route without staying on the empty screen", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createDraftOnlySnapshot(),
+      initialPath: "/",
+      configureFixture: (nextFixture) => {
+        nextFixture.serverConfig = {
+          ...nextFixture.serverConfig,
+          keybindings: [
+            {
+              command: "chat.newLocal",
+              shortcut: {
+                key: "n",
+                metaKey: false,
+                ctrlKey: false,
+                shiftKey: true,
+                altKey: false,
+                modKey: true,
+              },
+              whenAst: {
+                type: "not",
+                node: { type: "identifier", name: "terminalFocus" },
+              },
+            },
+          ],
+        };
+      },
+    });
+
+    try {
+      await waitForServerConfigToApply();
+      await expect
+        .element(page.getByText("Select a thread or create a new one to get started."))
+        .toBeInTheDocument();
+
+      const newThreadPath = await triggerChatNewLocalShortcutUntilPath(
+        mounted.router,
+        (path) => UUID_ROUTE_RE.test(path),
+        "Index-route chat.newLocal should navigate to the first project's draft thread UUID route.",
+      );
+
+      await waitForComposerEditor();
+      await waitForLayout();
+
+      expect(mounted.router.state.location.pathname).toBe(newThreadPath);
+      await expect
+        .element(page.getByText("Select a thread or create a new one to get started."))
+        .not.toBeInTheDocument();
+      await expect.element(page.getByTestId("composer-editor")).toBeInTheDocument();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("does not redirect a just-created draft thread back to index", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-draft-redirect-guard" as MessageId,
+        targetText: "draft redirect guard",
+      }),
+    });
+
+    try {
+      const newThreadButton = page.getByTestId("new-thread-button");
+      await expect.element(newThreadButton).toBeInTheDocument();
+
+      await newThreadButton.click();
+
+      const newThreadPath = await waitForURL(
+        mounted.router,
+        (path) => UUID_ROUTE_RE.test(path),
+        "Sidebar new-thread should navigate to a draft thread UUID route.",
+      );
+
+      await waitForComposerEditor();
+      await nextFrame();
+      await nextFrame();
+      await nextFrame();
+
+      expect(mounted.router.state.location.pathname).toBe(newThreadPath);
+      await expect
+        .element(page.getByText("Select a thread or create a new one to get started."))
+        .not.toBeInTheDocument();
+    } finally {
+      await mounted.cleanup();
+    }
+  });
+
+  it("redirects a genuinely missing thread route back to index", async () => {
+    const mounted = await mountChatView({
+      viewport: DEFAULT_VIEWPORT,
+      snapshot: createSnapshotForTargetUser({
+        targetMessageId: "msg-user-missing-thread-route" as MessageId,
+        targetText: "missing thread route",
+      }),
+      initialPath: "/missing-thread-route",
+    });
+
+    try {
+      await waitForURL(
+        mounted.router,
+        (path) => path === "/",
+        "Missing thread routes should redirect back to the index route.",
+      );
+      await expect
+        .element(page.getByText("Select a thread or create a new one to get started."))
+        .toBeInTheDocument();
     } finally {
       await mounted.cleanup();
     }

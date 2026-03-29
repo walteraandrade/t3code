@@ -1,6 +1,6 @@
 import { ThreadId } from "@t3tools/contracts";
 import { createFileRoute, retainSearchParams, useNavigate } from "@tanstack/react-router";
-import { Suspense, lazy, type ReactNode, useCallback, useEffect, useState } from "react";
+import { Suspense, lazy, type ReactNode, useCallback, useEffect, useMemo, useState } from "react";
 
 import ChatView from "../components/ChatView";
 import { DiffWorkerPoolProvider } from "../components/DiffWorkerPoolProvider";
@@ -18,6 +18,7 @@ import {
 } from "../diffRouteSearch";
 import { useMediaQuery } from "../hooks/useMediaQuery";
 import { useStore } from "../store";
+import { resolveRouteThreadPresence } from "../threadRoutePresence";
 import { Sheet, SheetPopup } from "../components/ui/sheet";
 import { Sidebar, SidebarInset, SidebarProvider, SidebarRail } from "~/components/ui/sidebar";
 
@@ -162,21 +163,30 @@ const DiffPanelInlineSidebar = (props: {
 
 function ChatThreadRouteView() {
   const bootstrapComplete = useStore((store) => store.bootstrapComplete);
+  const threadsHydrated = useStore((store) => store.threadsHydrated);
+  const threads = useStore((store) => store.threads);
   const navigate = useNavigate();
   const threadId = Route.useParams({
     select: (params) => ThreadId.makeUnsafe(params.threadId),
   });
   const search = Route.useSearch();
-  const threadExists = useStore((store) => store.threads.some((thread) => thread.id === threadId));
-  const draftThreadExists = useComposerDraftStore((store) =>
-    Object.hasOwn(store.draftThreadsByThreadId, threadId),
+  const draftThreadsByThreadId = useComposerDraftStore((store) => store.draftThreadsByThreadId);
+  const routeThreadPresence = useMemo(
+    () =>
+      resolveRouteThreadPresence({
+        threadId,
+        threads,
+        draftThreadsByThreadId,
+      }),
+    [draftThreadsByThreadId, threadId, threads],
   );
-  const routeThreadExists = threadExists || draftThreadExists;
+  const { routeThreadExists } = routeThreadPresence;
   const diffOpen = search.diff === "1";
   const shouldUseDiffSheet = useMediaQuery(DIFF_INLINE_LAYOUT_MEDIA_QUERY);
   // TanStack Router keeps active route components mounted across param-only navigations
   // unless remountDeps are configured, so this stays warm across thread switches.
   const [hasOpenedDiff, setHasOpenedDiff] = useState(diffOpen);
+  const [hasConfirmedMissingRouteThread, setHasConfirmedMissingRouteThread] = useState(false);
   const closeDiff = useCallback(() => {
     void navigate({
       to: "/$threadId",
@@ -202,15 +212,27 @@ function ChatThreadRouteView() {
   }, [diffOpen]);
 
   useEffect(() => {
-    if (!bootstrapComplete) {
+    if (routeThreadExists) {
+      setHasConfirmedMissingRouteThread(false);
       return;
     }
 
-    if (!routeThreadExists) {
-      void navigate({ to: "/", replace: true });
+    const frame = window.requestAnimationFrame(() => {
+      setHasConfirmedMissingRouteThread(true);
+    });
+
+    return () => {
+      window.cancelAnimationFrame(frame);
+    };
+  }, [routeThreadExists, threadId]);
+
+  useEffect(() => {
+    if (!threadsHydrated || !hasConfirmedMissingRouteThread || routeThreadExists) {
       return;
     }
-  }, [bootstrapComplete, navigate, routeThreadExists, threadId]);
+
+    void navigate({ to: "/", replace: true });
+  }, [hasConfirmedMissingRouteThread, navigate, routeThreadExists, threadsHydrated]);
 
   if (!bootstrapComplete || !routeThreadExists) {
     return null;
