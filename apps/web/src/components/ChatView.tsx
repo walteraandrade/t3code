@@ -492,6 +492,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
   >({});
   const [isConnecting, _setIsConnecting] = useState(false);
   const [isRevertingCheckpoint, setIsRevertingCheckpoint] = useState(false);
+  const [isStopping, setIsStopping] = useState(false);
   const [respondingRequestIds, setRespondingRequestIds] = useState<ApprovalRequestId[]>([]);
   const [respondingUserInputRequestIds, setRespondingUserInputRequestIds] = useState<
     ApprovalRequestId[]
@@ -2960,13 +2961,18 @@ export default function ChatView({ threadId }: ChatViewProps) {
 
   const onInterrupt = async () => {
     const api = readNativeApi();
-    if (!api || !activeThread) return;
-    await api.orchestration.dispatchCommand({
-      type: "thread.turn.interrupt",
-      commandId: newCommandId(),
-      threadId: activeThread.id,
-      createdAt: new Date().toISOString(),
-    });
+    if (!api || !activeThread || isStopping) return;
+    setIsStopping(true);
+    try {
+      await api.orchestration.dispatchCommand({
+        type: "thread.turn.interrupt",
+        commandId: newCommandId(),
+        threadId: activeThread.id,
+        createdAt: new Date().toISOString(),
+      });
+    } catch {
+      setIsStopping(false);
+    }
   };
 
   const onRespondToApproval = useCallback(

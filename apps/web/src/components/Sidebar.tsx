@@ -311,15 +311,10 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
 
 function T3Wordmark() {
   return (
-    <div
-      aria-label="App icon"
+    <img
+      src="/avatar-sprite.webp"
+      alt="App icon"
       className="size-5 shrink-0"
-      style={{
-        backgroundImage: "url('/avatar-sprite.png')",
-        backgroundSize: "60px 60px",
-        backgroundPosition: "-40px -20px",
-        imageRendering: "pixelated",
-      }}
     />
   );
 }
@@ -422,9 +417,8 @@ function SortableProjectItem({
         transform: CSS.Translate.toString(transform),
         transition,
       }}
-      className={`group/menu-item relative rounded-md bg-foreground/[0.02] ${
-        isDragging ? "z-20 opacity-80" : ""
-      } ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
+      className={`group/menu-item relative rounded-md bg-foreground/[0.02] ${isDragging ? "z-20 opacity-80" : ""
+        } ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
       data-sidebar="menu-item"
       data-slot="sidebar-menu-item"
     >
