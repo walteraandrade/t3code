@@ -10,7 +10,6 @@ import {
   TerminalIcon,
   TriangleAlertIcon,
 } from "lucide-react";
-import { ProjectFavicon } from "./ProjectFavicon";
 import { autoAnimate } from "@formkit/auto-animate";
 import {
   useCallback,
@@ -51,9 +50,9 @@ import {
   type SidebarThreadSortOrder,
 } from "@t3tools/contracts/settings";
 import { isElectron } from "../env";
-import { APP_STAGE_LABEL, APP_VERSION } from "../branding";
+import { APP_STAGE_LABEL, APP_VERSION, SIDEBAR_BRAND_IMAGE_PATH } from "../branding";
 import { isTerminalFocused } from "../lib/terminalFocus";
-import { isLinuxPlatform, isMacPlatform, newCommandId, newProjectId } from "../lib/utils";
+import { cn, isLinuxPlatform, isMacPlatform, newCommandId, newProjectId } from "../lib/utils";
 import { useStore } from "../store";
 import { useUiStateStore } from "../uiStateStore";
 import {
@@ -213,6 +212,17 @@ function toSidebarThreadSnapshot(
   sidebarThreadSnapshotCache.set(thread, { lastVisitedAt, snapshot });
   return snapshot;
 }
+
+const SIDEBAR_PROJECT_CARD_CLASS =
+  "overflow-hidden border border-sidebar-border/60 bg-sidebar/70 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]";
+const SIDEBAR_PROJECT_HEADER_ROW_CLASS =
+  "gap-2 border-b border-sidebar-border/65 px-2 py-1.5 text-left hover:bg-accent/60 hover:text-sidebar-accent-foreground";
+const SIDEBAR_PROJECT_TITLE_CLASS = "flex-1 truncate text-[11px] font-semibold text-foreground";
+const SIDEBAR_THREAD_ROW_CONTAINER_CLASS =
+  "h-7 border border-transparent px-2.5 text-sidebar-foreground/90 hover:border-sidebar-border/45";
+const SIDEBAR_THREAD_TIMESTAMP_CLASS =
+  "text-[10px] tabular-nums text-muted-foreground/38 transition-colors";
+const loadedProjectFaviconSrcs = new Set<string>();
 interface TerminalStatusIndicator {
   label: "Terminal process running";
   colorClass: string;
@@ -319,6 +329,110 @@ function T3Wordmark() {
   );
 }
 
+function SidebarBrand() {
+  const [brandState, setBrandState] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    let active = true;
+    const image = new Image();
+    const handleLoad = () => {
+      if (active) {
+        setBrandState("ready");
+      }
+    };
+    const handleError = () => {
+      if (active) {
+        setBrandState("error");
+      }
+    };
+    image.addEventListener("load", handleLoad);
+    image.addEventListener("error", handleError);
+    image.src = SIDEBAR_BRAND_IMAGE_PATH;
+    return () => {
+      active = false;
+      image.removeEventListener("load", handleLoad);
+      image.removeEventListener("error", handleError);
+    };
+  }, []);
+
+  return (
+    <Tooltip>
+      <TooltipTrigger
+        render={
+          <div className="flex min-w-0 flex-1 items-center gap-2.5 cursor-pointer">
+            <div className="flex h-8 w-[9.5rem] min-w-0 items-center overflow-hidden border border-border/60 bg-background/50">
+              {brandState === "ready" ? (
+                <img
+                  src={SIDEBAR_BRAND_IMAGE_PATH}
+                  alt="Sidebar brand"
+                  className="h-8 w-[9.5rem] object-contain object-left"
+                  draggable={false}
+                />
+              ) : (
+                <div className="flex h-full w-full items-center gap-1.5 px-2">
+                  <T3Wordmark />
+                  <span className="truncate text-sm font-medium tracking-tight text-muted-foreground">
+                    Code
+                  </span>
+                </div>
+              )}
+            </div>
+            <span className="border border-border/60 bg-muted/35 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/65">
+              {APP_STAGE_LABEL}
+            </span>
+          </div>
+        }
+      />
+      <TooltipPopup side="bottom" sideOffset={2}>
+        Version {APP_VERSION}
+      </TooltipPopup>
+    </Tooltip>
+  );
+}
+
+function getServerHttpOrigin(): string {
+  const bridgeUrl = window.desktopBridge?.getWsUrl();
+  const envUrl = import.meta.env.VITE_WS_URL as string | undefined;
+  const wsUrl =
+    bridgeUrl && bridgeUrl.length > 0
+      ? bridgeUrl
+      : envUrl && envUrl.length > 0
+        ? envUrl
+        : `${window.location.protocol === "https:" ? "wss" : "ws"}://${window.location.hostname}:${window.location.port}`;
+  const httpUrl = wsUrl.replace(/^wss:/, "https:").replace(/^ws:/, "http:");
+  try {
+    return new URL(httpUrl).origin;
+  } catch {
+    return httpUrl;
+  }
+}
+
+const serverHttpOrigin = getServerHttpOrigin();
+
+function ProjectFavicon({ cwd }: { cwd: string }) {
+  const src = `${serverHttpOrigin}/api/project-favicon?cwd=${encodeURIComponent(cwd)}`;
+  const [status, setStatus] = useState<"loading" | "loaded" | "error">(() =>
+    loadedProjectFaviconSrcs.has(src) ? "loaded" : "loading",
+  );
+
+  if (status === "error") {
+    return <FolderIcon className="size-3.5 shrink-0 text-muted-foreground/50" />;
+  }
+
+  return (
+    <img
+      src={src}
+      alt=""
+      className={`size-3.5 shrink-0 rounded-none object-contain ${status === "loading" ? "hidden" : ""}`}
+      onLoad={() => {
+        loadedProjectFaviconSrcs.add(src);
+        setStatus("loaded");
+      }}
+      onError={() => setStatus("error")}
+    />
+  );
+}
+
 type SortableProjectHandleProps = Pick<
   ReturnType<typeof useSortable>,
   "attributes" | "listeners" | "setActivatorNodeRef"
@@ -340,7 +454,7 @@ function ProjectSortMenu({
       <Tooltip>
         <TooltipTrigger
           render={
-            <MenuTrigger className="inline-flex size-5 cursor-pointer items-center justify-center rounded-md text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground" />
+            <MenuTrigger className="inline-flex size-5 cursor-pointer items-center justify-center rounded-none text-muted-foreground/60 transition-colors hover:bg-accent hover:text-foreground" />
           }
         >
           <ArrowUpDownIcon className="size-3.5" />
@@ -1437,7 +1551,7 @@ export default function Sidebar() {
                       <button
                         type="button"
                         aria-label={prStatus.tooltip}
-                        className={`inline-flex items-center justify-center ${prStatus.colorClass} cursor-pointer rounded-sm outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
+                        className={`inline-flex items-center justify-center ${prStatus.colorClass} cursor-pointer rounded-none outline-hidden focus-visible:ring-1 focus-visible:ring-ring`}
                         onClick={(event) => {
                           openPrLink(event, prStatus.url);
                         }}
@@ -1459,7 +1573,7 @@ export default function Sidebar() {
                       el.select();
                     }
                   }}
-                  className="min-w-0 flex-1 truncate text-xs bg-transparent outline-none border border-ring rounded px-0.5"
+                  className="min-w-0 flex-1 truncate border border-ring bg-transparent px-1 text-[11px] outline-none"
                   value={renamingTitle}
                   onChange={(e) => setRenamingTitle(e.target.value)}
                   onKeyDown={(e) => {
@@ -1482,7 +1596,9 @@ export default function Sidebar() {
                   onClick={(e) => e.stopPropagation()}
                 />
               ) : (
-                <span className="min-w-0 flex-1 truncate text-xs">{thread.title}</span>
+                <span className="min-w-0 flex-1 truncate text-[11px] text-sidebar-foreground/84">
+                  {thread.title}
+                </span>
               )}
             </div>
             <div className="ml-auto flex shrink-0 items-center gap-1.5">
@@ -1613,7 +1729,7 @@ export default function Sidebar() {
           <SidebarMenuButton
             ref={isManualProjectSorting ? dragHandleProps?.setActivatorNodeRef : undefined}
             size="sm"
-            className={`gap-2 px-2 py-1.5 text-left hover:bg-accent group-hover/project-header:bg-accent group-hover/project-header:text-sidebar-accent-foreground ${
+            className={`${SIDEBAR_PROJECT_HEADER_ROW_CLASS} group-hover/project-header:bg-accent/60 group-hover/project-header:text-sidebar-accent-foreground ${
               isManualProjectSorting ? "cursor-grab active:cursor-grabbing" : "cursor-pointer"
             }`}
             {...(isManualProjectSorting && dragHandleProps ? dragHandleProps.attributes : {})}
@@ -1653,9 +1769,7 @@ export default function Sidebar() {
               />
             )}
             <ProjectFavicon cwd={project.cwd} />
-            <span className="flex-1 truncate text-xs font-medium text-foreground/90">
-              {project.name}
-            </span>
+            <span className={SIDEBAR_PROJECT_TITLE_CLASS}>{project.name}</span>
           </SidebarMenuButton>
           <Tooltip>
             <TooltipTrigger
@@ -1926,26 +2040,11 @@ export default function Sidebar() {
   }, []);
 
   const wordmark = (
-    <div className="flex items-center gap-2">
+    <div className="flex min-w-0 items-center gap-2">
       <SidebarTrigger className="shrink-0 md:hidden" />
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <div className="flex min-w-0 flex-1 items-center gap-1 ml-1 cursor-pointer">
-              <T3Wordmark />
-              <span className="truncate text-sm font-medium tracking-tight text-muted-foreground">
-                Code
-              </span>
-              <span className="rounded-full bg-muted/50 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60">
-                {APP_STAGE_LABEL}
-              </span>
-            </div>
-          }
-        />
-        <TooltipPopup side="bottom" sideOffset={2}>
-          Version {APP_VERSION}
-        </TooltipPopup>
-      </Tooltip>
+      <div className="ml-1 flex min-w-0 flex-1 items-center">
+        <SidebarBrand />
+      </div>
     </div>
   );
 

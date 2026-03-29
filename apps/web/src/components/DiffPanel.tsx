@@ -426,7 +426,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
         <button
           type="button"
           className={cn(
-            "absolute left-0 top-1/2 z-20 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md border bg-background/90 text-muted-foreground transition-colors",
+            "absolute left-0 top-1/2 z-20 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-none border bg-background/90 text-muted-foreground transition-colors",
             canScrollTurnStripLeft
               ? "border-border/70 hover:border-border hover:text-foreground"
               : "cursor-not-allowed border-border/40 text-muted-foreground/40",
@@ -440,7 +440,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
         <button
           type="button"
           className={cn(
-            "absolute right-0 top-1/2 z-20 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-md border bg-background/90 text-muted-foreground transition-colors",
+            "absolute right-0 top-1/2 z-20 inline-flex size-6 -translate-y-1/2 items-center justify-center rounded-none border bg-background/90 text-muted-foreground transition-colors",
             canScrollTurnStripRight
               ? "border-border/70 hover:border-border hover:text-foreground"
               : "cursor-not-allowed border-border/40 text-muted-foreground/40",
@@ -458,13 +458,13 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
         >
           <button
             type="button"
-            className="shrink-0 rounded-md"
+            className="shrink-0 rounded-none"
             onClick={selectWholeConversation}
             data-turn-chip-selected={selectedTurnId === null}
           >
             <div
               className={cn(
-                "rounded-md border px-2 py-1 text-left transition-colors",
+                "rounded-none border px-2 py-1 text-left transition-colors",
                 selectedTurnId === null
                   ? "border-border bg-accent text-accent-foreground"
                   : "border-border/70 bg-background/70 text-muted-foreground/80 hover:border-border hover:text-foreground/80",
@@ -477,14 +477,14 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
             <button
               key={summary.turnId}
               type="button"
-              className="shrink-0 rounded-md"
+              className="shrink-0 rounded-none"
               onClick={() => selectTurn(summary.turnId)}
               title={summary.turnId}
               data-turn-chip-selected={summary.turnId === selectedTurn?.turnId}
             >
               <div
                 className={cn(
-                  "rounded-md border px-2 py-1 text-left transition-colors",
+                  "rounded-none border px-2 py-1 text-left transition-colors",
                   summary.turnId === selectedTurn?.turnId
                     ? "border-border bg-accent text-accent-foreground"
                     : "border-border/70 bg-background/70 text-muted-foreground/80 hover:border-border hover:text-foreground/80",
@@ -595,7 +595,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
                     <div
                       key={themedFileKey}
                       data-diff-file-path={filePath}
-                      className="diff-render-file mb-2 rounded-md first:mt-2 last:mb-0"
+                      className="diff-render-file mb-2 rounded-none first:mt-2 last:mb-0"
                       onClickCapture={(event) => {
                         const nativeEvent = event.nativeEvent as MouseEvent;
                         const composedPath = nativeEvent.composedPath?.() ?? [];
@@ -628,7 +628,7 @@ export default function DiffPanel({ mode = "inline" }: DiffPanelProps) {
                   <p className="text-[11px] text-muted-foreground/75">{renderablePatch.reason}</p>
                   <pre
                     className={cn(
-                      "max-h-[72vh] rounded-md border border-border/70 bg-background/70 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground/90",
+                      "max-h-[72vh] rounded-none border border-border/70 bg-background/70 p-3 font-mono text-[11px] leading-relaxed text-muted-foreground/90",
                       diffWordWrap
                         ? "overflow-auto whitespace-pre-wrap wrap-break-word"
                         : "overflow-auto",
