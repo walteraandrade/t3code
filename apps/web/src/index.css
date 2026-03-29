@@ -29,6 +29,14 @@
   --color-card: var(--card);
   --color-foreground: var(--foreground);
   --color-background: var(--background);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
@@ -107,6 +115,14 @@
   --success-foreground: var(--color-emerald-700);
   --warning: var(--color-amber-500);
   --warning-foreground: var(--color-amber-700);
+  --sidebar: var(--background);
+  --sidebar-foreground: var(--foreground);
+  --sidebar-primary: var(--primary);
+  --sidebar-primary-foreground: var(--primary-foreground);
+  --sidebar-accent: var(--accent);
+  --sidebar-accent-foreground: var(--foreground);
+  --sidebar-border: var(--border);
+  --sidebar-ring: var(--ring);
 
   @variant dark {
     color-scheme: dark;
@@ -135,6 +151,14 @@
     --success-foreground: var(--color-emerald-400);
     --warning: var(--color-amber-500);
     --warning-foreground: var(--color-amber-400);
+    --sidebar: var(--background);
+    --sidebar-foreground: var(--foreground);
+    --sidebar-primary: var(--primary);
+    --sidebar-primary-foreground: var(--primary-foreground);
+    --sidebar-accent: var(--accent);
+    --sidebar-accent-foreground: var(--foreground);
+    --sidebar-border: var(--border);
+    --sidebar-ring: var(--ring);
   }
 }
 
@@ -399,6 +423,37 @@ label:has(> select#reasoning-effort) select {
   background: color-mix(in srgb, var(--muted) 78%, var(--background)) !important;
 }
 
+.chat-markdown .chat-markdown-mermaid {
+  margin: 0.65rem 0;
+}
+
+.chat-markdown .chat-markdown-mermaid-frame {
+  max-width: 100%;
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: 0.75rem;
+  background: color-mix(in srgb, var(--card) 94%, var(--background));
+  padding: 0.8rem 0.9rem;
+}
+
+.chat-markdown .chat-markdown-mermaid-frame svg {
+  display: block;
+  max-width: 100%;
+  height: auto;
+}
+
+.chat-markdown .chat-markdown-mermaid-status {
+  margin: 0;
+  color: var(--muted-foreground);
+  font-size: 0.875rem;
+}
+
+.chat-markdown .chat-markdown-mermaid-error {
+  margin-bottom: 0.5rem;
+  color: var(--destructive-foreground);
+  font-size: 0.75rem;
+}
+
 .chat-markdown table {
   width: 100%;
   border-collapse: collapse;
@@ -444,13 +499,11 @@ label:has(> select#reasoning-effort) select {
 .ultrathink-frame {
   --ultrathink-spectrum: linear-gradient(
     120deg,
-    #ff6b6b 0%,
-    #f59e0b 18%,
-    #22c55e 36%,
-    #14b8a6 54%,
-    #3b82f6 72%,
-    #ec4899 90%,
-    #ff6b6b 100%
+    var(--destructive-foreground, #c44860) 0%,
+    var(--warning-foreground, #e8b820) 25%,
+    var(--color-primary, var(--primary, #d4a017)) 50%,
+    var(--info-foreground, #6868a0) 75%,
+    var(--destructive-foreground, #c44860) 100%
   );
   background-image: var(--ultrathink-spectrum);
   background-size: 220% 220%;

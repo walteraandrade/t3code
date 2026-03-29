@@ -6,20 +6,24 @@ import type {
 } from "@t3tools/contracts";
 import { useIsMutating, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCallback, useEffect, useEffectEvent, useMemo, useRef, useState } from "react";
-import { ChevronDownIcon, CloudUploadIcon, GitCommitIcon, InfoIcon } from "lucide-react";
+import { BotIcon, ChevronDownIcon, CloudUploadIcon, GitCommitIcon, InfoIcon } from "lucide-react";
 import { GitHubIcon } from "./Icons";
 import {
+  AI_GIT_ACTIONS,
+  type AiGitAction,
   buildGitActionProgressStages,
   buildMenuItems,
+  type DefaultBranchConfirmableAction,
   type GitActionIconName,
   type GitActionMenuItem,
   type GitQuickAction,
-  type DefaultBranchConfirmableAction,
   requiresDefaultBranchConfirmation,
   resolveDefaultBranchActionDialogCopy,
   resolveQuickAction,
   summarizeGitResult,
 } from "./GitActionsControl.logic";
+import { useSendThreadMessage } from "~/lib/useSendThreadMessage";
+import { getAllAskClaudeActions, useAppSettings } from "~/appSettings";
 import { Button } from "~/components/ui/button";
 import { Checkbox } from "~/components/ui/checkbox";
 import {
@@ -215,6 +219,8 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
   const [isEditingFiles, setIsEditingFiles] = useState(false);
   const [pendingDefaultBranchAction, setPendingDefaultBranchAction] =
     useState<PendingDefaultBranchAction | null>(null);
+  const [aiPromptDialogOpen, setAiPromptDialogOpen] = useState(false);
+  const [aiPromptText, setAiPromptText] = useState("");
   const activeGitActionProgressRef = useRef<ActiveGitActionProgress | null>(null);
 
   const updateActiveProgressToast = useCallback(() => {
@@ -725,6 +731,47 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
     [gitCwd, threadToastData],
   );
 
+  const sendToAgent = useSendThreadMessage(activeThreadId);
+
+  const runAiGitAction = useCallback(
+    (action: AiGitAction) => {
+      if (action.editBeforeSend) {
+        setAiPromptText(action.prompt);
+        setAiPromptDialogOpen(true);
+        return;
+      }
+      void sendToAgent(action.prompt)
+        .then(() => {
+          toastManager.add({ type: "info", title: "Sent to Claude", data: threadToastData });
+        })
+        .catch((err: unknown) => {
+          toastManager.add({
+            type: "error",
+            title: "Failed to send",
+            description: err instanceof Error ? err.message : "An error occurred.",
+            data: threadToastData,
+          });
+        });
+    },
+    [sendToAgent, threadToastData],
+  );
+
+  const submitAiPromptDialog = useCallback(() => {
+    setAiPromptDialogOpen(false);
+    void sendToAgent(aiPromptText)
+      .then(() => {
+        toastManager.add({ type: "info", title: "Sent to Claude", data: threadToastData });
+      })
+      .catch((err: unknown) => {
+        toastManager.add({
+          type: "error",
+          title: "Failed to send",
+          description: err instanceof Error ? err.message : "An error occurred.",
+          data: threadToastData,
+        });
+      });
+  }, [sendToAgent, aiPromptText, threadToastData]);
+
   if (!gitCwd) return null;
 
   return (
@@ -854,6 +901,42 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
           </Menu>
         </Group>
       )}
+
+      <Group aria-label="Ask Claude git actions">
+        <Menu>
+          <MenuTrigger
+            render={
+              <Button
+                aria-label="Ask Claude to run git action"
+                size="xs"
+                variant="outline"
+                disabled={!activeThreadId}
+              />
+            }
+          >
+            <BotIcon className="size-3.5" />
+            <span className="sr-only @sm/header-actions:not-sr-only @sm/header-actions:ml-0.5">
+              Ask Claude
+            </span>
+            <ChevronDownIcon aria-hidden="true" className="ml-0.5 size-4" />
+          </MenuTrigger>
+          <MenuPopup align="end">
+            {getAllAskClaudeActions(settings).map((action, index) => (
+              <MenuItem
+                key={action.id}
+                onClick={() => runAiGitAction(action)}
+                className={
+                  index === AI_GIT_ACTIONS.length && settings.customQuickActions.length > 0
+                    ? "border-t border-border"
+                    : undefined
+                }
+              >
+                {action.label}
+              </MenuItem>
+            ))}
+          </MenuPopup>
+        </Menu>
+      </Group>
 
       <Dialog
         open={isCommitDialogOpen}
@@ -1046,6 +1129,31 @@ export default function GitActionsControl({ gitCwd, activeThreadId }: GitActions
             </Button>
             <Button size="sm" onClick={checkoutFeatureBranchAndContinuePendingAction}>
               Checkout feature branch & continue
+            </Button>
+          </DialogFooter>
+        </DialogPopup>
+      </Dialog>
+      <Dialog open={aiPromptDialogOpen} onOpenChange={setAiPromptDialogOpen}>
+        <DialogPopup>
+          <DialogHeader>
+            <DialogTitle>Ask Claude</DialogTitle>
+            <DialogDescription>Edit the prompt before sending to Claude.</DialogDescription>
+          </DialogHeader>
+          <DialogPanel>
+            <Textarea
+              value={aiPromptText}
+              onChange={(e) => setAiPromptText(e.target.value)}
+              size="sm"
+              rows={4}
+              autoFocus
+            />
+          </DialogPanel>
+          <DialogFooter>
+            <Button variant="outline" size="sm" onClick={() => setAiPromptDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button size="sm" disabled={!aiPromptText.trim()} onClick={submitAiPromptDialog}>
+              Send
             </Button>
           </DialogFooter>
         </DialogPopup>

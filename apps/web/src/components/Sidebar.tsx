@@ -422,7 +422,7 @@ function SortableProjectItem({
         transform: CSS.Translate.toString(transform),
         transition,
       }}
-      className={`group/menu-item relative rounded-md ${
+      className={`group/menu-item relative rounded-md bg-foreground/[0.02] ${
         isDragging ? "z-20 opacity-80" : ""
       } ${isOver && !isDragging ? "ring-1 ring-primary/40" : ""}`}
       data-sidebar="menu-item"

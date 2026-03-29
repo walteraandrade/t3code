@@ -100,6 +100,9 @@ export function createWsNativeApi(): NativeApi {
           .then((events) => [...events]),
       onDomainEvent: (callback) => rpcClient.orchestration.onDomainEvent(callback),
     },
+    theme: {
+      getOmarchyColors: () => Promise.resolve({ available: false }),
+    },
   };
 
   instance = { api };

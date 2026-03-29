@@ -27,6 +27,7 @@ import type {
   ServerProviderUpdatedPayload,
   ServerUpsertKeybindingResult,
 } from "./server";
+import type { OmarchyThemeResult } from "./omarchy";
 import type {
   TerminalClearInput,
   TerminalCloseInput,
@@ -181,5 +182,8 @@ export interface NativeApi {
     ) => Promise<OrchestrationGetFullThreadDiffResult>;
     replayEvents: (fromSequenceExclusive: number) => Promise<OrchestrationEvent[]>;
     onDomainEvent: (callback: (event: OrchestrationEvent) => void) => () => void;
+  };
+  theme: {
+    getOmarchyColors: () => Promise<OmarchyThemeResult>;
   };
 }

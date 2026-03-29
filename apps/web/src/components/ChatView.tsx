@@ -3803,6 +3803,12 @@ export default function ChatView({ threadId }: ChatViewProps) {
             <div
               ref={setMessagesScrollContainerRef}
               className="min-h-0 flex-1 overflow-x-hidden overflow-y-auto overscroll-y-contain px-3 py-3 sm:px-5 sm:py-4"
+              style={{
+                backgroundImage:
+                  "linear-gradient(rgba(0,0,0,0.85), rgba(0,0,0,0.85)), url('/thread-bg.webp')",
+                backgroundSize: "cover",
+                backgroundPosition: "center",
+              }}
               onScroll={onMessagesScroll}
               onClickCapture={onMessagesClickCapture}
               onWheel={onMessagesWheel}
@@ -3846,7 +3852,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
                 <button
                   type="button"
                   onClick={() => scrollMessagesToBottom("smooth")}
-                  className="pointer-events-auto flex items-center gap-1.5 rounded-full border border-border/60 bg-card px-3 py-1 text-muted-foreground text-xs shadow-sm transition-colors hover:border-border hover:text-foreground hover:cursor-pointer"
+                  className="pointer-events-auto flex items-center gap-1.5 rounded-none border-2 border-border/60 bg-card px-3 py-1 text-muted-foreground text-xs shadow-sm transition-colors hover:border-border hover:text-foreground hover:cursor-pointer"
                 >
                   <ChevronDownIcon className="size-3.5" />
                   Scroll to bottom
@@ -3865,7 +3871,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
             >
               <div
                 className={cn(
-                  "group rounded-[22px] p-px transition-colors duration-200",
+                  "group rounded-none p-px transition-colors duration-200",
                   composerProviderState.composerFrameClassName,
                 )}
                 onDragEnter={onComposerDragEnter}
@@ -3879,16 +3885,22 @@ export default function ChatView({ threadId }: ChatViewProps) {
                     isDragOverComposer ? "border-primary/70 bg-accent/30" : "border-border",
                     composerProviderState.composerSurfaceClassName,
                   )}
+                  style={{
+                    backgroundImage:
+                      "linear-gradient(rgba(10,8,6,0.97), rgba(10,8,6,0.97)), url('/thread-bg.webp')",
+                    backgroundSize: "cover",
+                    backgroundPosition: "center",
+                  }}
                 >
                   {activePendingApproval ? (
-                    <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                    <div className="rounded-t-none border-b border-border/65 bg-muted/20">
                       <ComposerPendingApprovalPanel
                         approval={activePendingApproval}
                         pendingCount={pendingApprovals.length}
                       />
                     </div>
                   ) : pendingUserInputs.length > 0 ? (
-                    <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                    <div className="rounded-t-none border-b border-border/65 bg-muted/20">
                       <ComposerPendingUserInputPanel
                         pendingUserInputs={pendingUserInputs}
                         respondingRequestIds={respondingRequestIds}
@@ -3899,7 +3911,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
                       />
                     </div>
                   ) : showPlanFollowUpPrompt && activeProposedPlan ? (
-                    <div className="rounded-t-[19px] border-b border-border/65 bg-muted/20">
+                    <div className="rounded-t-none border-b border-border/65 bg-muted/20">
                       <ComposerPlanFollowUpBanner
                         key={activeProposedPlan.id}
                         planTitle={proposedPlanTitle(activeProposedPlan.planMarkdown) ?? null}
@@ -4165,7 +4177,7 @@ export default function ChatView({ threadId }: ChatViewProps) {
                                   className={cn(
                                     "shrink-0 whitespace-nowrap px-2 sm:px-3",
                                     planSidebarOpen
-                                      ? "text-blue-400 hover:text-blue-300"
+                                      ? "text-info-foreground hover:text-info-foreground/80"
                                       : "text-muted-foreground/70 hover:text-foreground/80",
                                   )}
                                   size="sm"
