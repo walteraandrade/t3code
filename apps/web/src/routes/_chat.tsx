@@ -1,6 +1,8 @@
 import { Outlet, createFileRoute } from "@tanstack/react-router";
 import { useEffect } from "react";
 
+import ThreadSidebar from "../components/Sidebar";
+import { ChatShell } from "../fork/layout/ChatShell";
 import { useHandleNewThread } from "../hooks/useHandleNewThread";
 import { isTerminalFocused } from "../lib/terminalFocus";
 import { resolveShortcutCommand } from "../keybindings";
@@ -9,6 +11,10 @@ import { useThreadSelectionStore } from "../threadSelectionStore";
 import { resolveSidebarNewThreadEnvMode } from "~/components/Sidebar.logic";
 import { useSettings } from "~/hooks/useSettings";
 import { useServerKeybindings } from "~/rpc/serverState";
+
+const THREAD_SIDEBAR_WIDTH_STORAGE_KEY = "chat_thread_sidebar_width";
+const THREAD_SIDEBAR_MIN_WIDTH = 13 * 16;
+const THREAD_MAIN_CONTENT_MIN_WIDTH = 40 * 16;
 
 function ChatRouteGlobalShortcuts() {
   const clearSelection = useThreadSelectionStore((state) => state.clearSelection);
@@ -88,10 +94,15 @@ function ChatRouteGlobalShortcuts() {
 
 function ChatRouteLayout() {
   return (
-    <>
+    <ChatShell
+      sidebar={<ThreadSidebar />}
+      sidebarStorageKey={THREAD_SIDEBAR_WIDTH_STORAGE_KEY}
+      sidebarMinWidth={THREAD_SIDEBAR_MIN_WIDTH}
+      mainContentMinWidth={THREAD_MAIN_CONTENT_MIN_WIDTH}
+    >
       <ChatRouteGlobalShortcuts />
       <Outlet />
-    </>
+    </ChatShell>
   );
 }
 

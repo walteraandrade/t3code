@@ -1,0 +1,8 @@
+:root {
+  --fork-body-font-family:
+    "DM Sans", -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --fork-mono-font-family:
+    "SF Mono", "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  --fork-grain-opacity: 0.035;
+  --fork-scrollbar-size: 6px;
+}

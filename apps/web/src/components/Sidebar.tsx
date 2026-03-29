@@ -50,8 +50,8 @@ import {
   type SidebarThreadSortOrder,
 } from "@t3tools/contracts/settings";
 import { isElectron } from "../env";
-import { APP_STAGE_LABEL, APP_VERSION, SIDEBAR_BRAND_IMAGE_PATH } from "../branding";
 import { isTerminalFocused } from "../lib/terminalFocus";
+import { ForkSidebarHeader } from "../fork/components/ForkSidebarHeader";
 import { cn, isLinuxPlatform, isMacPlatform, newCommandId, newProjectId } from "../lib/utils";
 import { useStore } from "../store";
 import { useUiStateStore } from "../uiStateStore";
@@ -91,7 +91,6 @@ import {
   SidebarContent,
   SidebarFooter,
   SidebarGroup,
-  SidebarHeader,
   SidebarMenuAction,
   SidebarMenu,
   SidebarMenuButton,
@@ -100,7 +99,6 @@ import {
   SidebarMenuSubButton,
   SidebarMenuSubItem,
   SidebarSeparator,
-  SidebarTrigger,
 } from "./ui/sidebar";
 import { useThreadSelectionStore } from "../threadSelectionStore";
 import { isNonEmpty as isNonEmptyString } from "effect/String";
@@ -319,77 +317,10 @@ function prStatusIndicator(pr: ThreadPr): PrStatusIndicator | null {
   return null;
 }
 
-function T3Wordmark() {
-  return (
-    <img
-      src="/avatar-sprite.webp"
-      alt="App icon"
-      className="size-5 shrink-0"
-    />
-  );
-}
-
-function SidebarBrand() {
-  const [brandState, setBrandState] = useState<"loading" | "ready" | "error">("loading");
-
-  useEffect(() => {
-    let active = true;
-    const image = new Image();
-    const handleLoad = () => {
-      if (active) {
-        setBrandState("ready");
-      }
-    };
-    const handleError = () => {
-      if (active) {
-        setBrandState("error");
-      }
-    };
-    image.addEventListener("load", handleLoad);
-    image.addEventListener("error", handleError);
-    image.src = SIDEBAR_BRAND_IMAGE_PATH;
-    return () => {
-      active = false;
-      image.removeEventListener("load", handleLoad);
-      image.removeEventListener("error", handleError);
-    };
-  }, []);
-
-  return (
-    <Tooltip>
-      <TooltipTrigger
-        render={
-          <div className="flex min-w-0 flex-1 items-center gap-2.5 cursor-pointer">
-            <div className="flex h-8 w-8 min-w-0 items-center overflow-hidden border border-border/60 bg-background/50">
-              {brandState === "ready" ? (
-                <img
-                  src={SIDEBAR_BRAND_IMAGE_PATH}
-                  alt="Sidebar brand"
-                  className="h-8 w-8 object-contain"
-                  draggable={false}
-                />
-              ) : (
-                <div className="flex h-full w-full items-center gap-1.5 px-2">
-                  <T3Wordmark />
-                  <span className="truncate text-sm font-medium tracking-tight text-muted-foreground">
-                    Code
-                  </span>
-                </div>
-              )}
-            </div>
-            <span className="border border-border/60 bg-muted/35 px-1.5 py-0.5 text-[8px] font-medium uppercase tracking-[0.18em] text-muted-foreground/65">
-              {APP_STAGE_LABEL}
-            </span>
-          </div>
-        }
-      />
-      <TooltipPopup side="bottom" sideOffset={2}>
-        Version {APP_VERSION}
-      </TooltipPopup>
-    </Tooltip>
-  );
-}
-
+/**
+ * Derives the server's HTTP origin (scheme + host + port) from the same
+ * sources WsTransport uses, converting ws(s) to http(s).
+ */
 function getServerHttpOrigin(): string {
   const bridgeUrl = window.desktopBridge?.getWsUrl();
   const envUrl = import.meta.env.VITE_WS_URL as string | undefined;
@@ -2039,26 +1970,32 @@ export default function Sidebar() {
     });
   }, []);
 
-  const wordmark = (
-    <div className="flex min-w-0 items-center gap-2">
-      <SidebarTrigger className="shrink-0 md:hidden" />
-      <div className="ml-1 flex min-w-0 flex-1 items-center">
-        <SidebarBrand />
-      </div>
-    </div>
-  );
-
   return (
     <>
-      {isElectron ? (
-        <SidebarHeader className="drag-region h-[52px] flex-row items-center gap-2 px-4 py-0 pl-[90px]">
-          {wordmark}
-        </SidebarHeader>
-      ) : (
-        <SidebarHeader className="gap-3 px-3 py-2 sm:gap-2.5 sm:px-4 sm:py-3">
-          {wordmark}
-        </SidebarHeader>
-      )}
+      <ForkSidebarHeader
+        isElectron={isElectron}
+        updateAction={
+          showDesktopUpdateButton ? (
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="button"
+                    aria-label={desktopUpdateTooltip}
+                    aria-disabled={desktopUpdateButtonDisabled || undefined}
+                    disabled={desktopUpdateButtonDisabled}
+                    className={`inline-flex size-7 ml-auto mt-1.5 items-center justify-center rounded-none text-muted-foreground transition-colors ${desktopUpdateButtonInteractivityClasses} ${desktopUpdateButtonClasses}`}
+                    onClick={handleDesktopUpdateButtonClick}
+                  >
+                    <RocketIcon className="size-3.5" />
+                  </button>
+                }
+              />
+              <TooltipPopup side="bottom">{desktopUpdateTooltip}</TooltipPopup>
+            </Tooltip>
+          ) : null
+        }
+      />
 
       {isOnSettings ? (
         <SettingsSidebarNav pathname={pathname} />
