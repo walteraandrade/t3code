@@ -18,7 +18,6 @@ import { APP_DISPLAY_NAME } from "../branding";
 import { AnchoredToastProvider, ToastProvider, toastManager } from "../components/ui/toast";
 import { resolveAndPersistPreferredEditor } from "../editorPreferences";
 import { AppErrorShell, AppLoadingShell } from "../fork/layout/AppShell";
-import { serverConfigQueryOptions, serverQueryKeys } from "../lib/serverReactQuery";
 import { readNativeApi } from "../nativeApi";
 import {
   type ServerConfigUpdateSource,

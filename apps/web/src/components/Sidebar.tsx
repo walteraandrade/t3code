@@ -215,8 +215,6 @@ function toSidebarThreadSnapshot(
   return snapshot;
 }
 
-const SIDEBAR_PROJECT_CARD_CLASS =
-  "overflow-hidden border border-sidebar-border/60 bg-sidebar/70 shadow-[inset_0_1px_0_0_rgba(255,255,255,0.03)]";
 const SIDEBAR_PROJECT_HEADER_ROW_CLASS =
   "gap-2 border-b border-sidebar-border/65 px-2 py-1.5 text-left hover:bg-accent/60 hover:text-sidebar-accent-foreground";
 const SIDEBAR_PROJECT_TITLE_CLASS = "flex-1 truncate text-[11px] font-semibold text-foreground";
